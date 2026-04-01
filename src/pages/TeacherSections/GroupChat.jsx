@@ -42,6 +42,24 @@ export default function GroupChat({ isTeacher }) {
 
   const [isDraggingRemote, setIsDraggingRemote] = useState(false);
 
+  // Ishtirokchilar paneli uchun state
+  const [participantsPanelPosition, setParticipantsPanelPosition] = useState({
+    x: window.innerWidth - 300,
+    y: 20,
+  });
+
+  const [isDraggingPanel, setIsDraggingPanel] = useState(false);
+  const [panelDragOffset, setPanelDragOffset] = useState({ x: 0, y: 0 });
+
+  const [participantsPanelSize, setParticipantsPanelSize] = useState({
+    width: 280,
+    height: 400,
+  });
+
+  const [isResizingPanel, setIsResizingPanel] = useState(false);
+  const [panelResizeStart, setPanelResizeStart] = useState({ x: 0, y: 0 });
+  const [panelStartSize, setPanelStartSize] = useState({ width: 0, height: 0 });
+
   const [videoPosition, setVideoPosition] = useState({
     x: window.innerWidth - 240,
     y: window.innerHeight - 160,
@@ -234,6 +252,23 @@ export default function GroupChat({ isTeacher }) {
             if (pc) {
               await pc.addIceCandidate(new RTCIceCandidate(data));
             }
+          }
+
+          // Talaba tomonda o'qituvchi video streamini qabul qilish
+          if (type === "offer" && !isTeacher) {
+            const pc = peerConnectionsRef.current[sender_id] || (await createPeerConnection(sender_id));
+            await pc.setRemoteDescription(new RTCSessionDescription(data));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            await supabase.from("webrtc_signaling").insert([
+              {
+                group_id: groupId,
+                sender_id: userId,
+                receiver_id: sender_id,
+                type: "answer",
+                data: answer,
+              },
+            ]);
           }
 
           if (type === "answer") {
@@ -431,6 +466,56 @@ export default function GroupChat({ isTeacher }) {
     setIsDraggingRemote(false);
   }, []);
 
+  // Ishtirokchilar panelini ko'chirish
+  const handlePanelMouseDown = (e) => {
+    e.stopPropagation();
+    setIsDraggingPanel(true);
+    setPanelDragOffset({
+      x: e.clientX - participantsPanelPosition.x,
+      y: e.clientY - participantsPanelPosition.y,
+    });
+  };
+
+  const handlePanelMouseMove = useCallback((e) => {
+    if (!isDraggingPanel) return;
+    setParticipantsPanelPosition({
+      x: e.clientX - panelDragOffset.x,
+      y: e.clientY - panelDragOffset.y,
+    });
+  }, [isDraggingPanel, panelDragOffset]);
+
+  const handlePanelMouseUp = useCallback(() => {
+    setIsDraggingPanel(false);
+  }, []);
+
+  // Ishtirokchilar panelini hajmini oshirish
+  const handlePanelResizeMouseDown = (e) => {
+    e.stopPropagation();
+    setIsResizingPanel(true);
+    setPanelResizeStart({
+      x: e.clientX,
+      y: e.clientY,
+    });
+    setPanelStartSize({
+      width: participantsPanelSize.width,
+      height: participantsPanelSize.height,
+    });
+  };
+
+  const handlePanelResizeMouseMove = useCallback((e) => {
+    if (!isResizingPanel) return;
+    const dx = e.clientX - panelResizeStart.x;
+    const dy = e.clientY - panelResizeStart.y;
+    setParticipantsPanelSize({
+      width: Math.max(200, panelStartSize.width + dx),
+      height: Math.max(200, panelStartSize.height + dy),
+    });
+  }, [isResizingPanel, panelResizeStart, panelStartSize]);
+
+  const handlePanelResizeMouseUp = useCallback(() => {
+    setIsResizingPanel(false);
+  }, []);
+
   useEffect(() => {
     if (isDragging) {
       window.addEventListener("mousemove", handleMouseMove);
@@ -463,6 +548,29 @@ export default function GroupChat({ isTeacher }) {
       window.removeEventListener("mouseup", handleRemoteMouseUp);
     };
   }, [isDraggingRemote, handleRemoteMouseMove, handleRemoteMouseUp]);
+
+  // Ishtirokchilar paneli event listenerlari
+  useEffect(() => {
+    if (isDraggingPanel) {
+      window.addEventListener("mousemove", handlePanelMouseMove);
+      window.addEventListener("mouseup", handlePanelMouseUp);
+    }
+    return () => {
+      window.removeEventListener("mousemove", handlePanelMouseMove);
+      window.removeEventListener("mouseup", handlePanelMouseUp);
+    };
+  }, [isDraggingPanel, handlePanelMouseMove, handlePanelMouseUp]);
+
+  useEffect(() => {
+    if (isResizingPanel) {
+      window.addEventListener("mousemove", handlePanelResizeMouseMove);
+      window.addEventListener("mouseup", handlePanelResizeMouseUp);
+    }
+    return () => {
+      window.removeEventListener("mousemove", handlePanelResizeMouseMove);
+      window.removeEventListener("mouseup", handlePanelResizeMouseUp);
+    };
+  }, [isResizingPanel, handlePanelResizeMouseMove, handlePanelResizeMouseUp]);
 
   const [editingId, setEditingId] = useState(null);
   const [editingText, setEditingText] = useState("");
@@ -1767,6 +1875,8 @@ export default function GroupChat({ isTeacher }) {
               onHandleMouseDown={handleMouseDown}
               onHandleRemoteMouseDown={handleRemoteMouseDown}
               onHandleResizeMouseDown={handleResizeMouseDown}
+              onHandlePanelMouseDown={handlePanelMouseDown}
+              onHandlePanelResizeMouseDown={handlePanelResizeMouseDown}
               participantsCount={participantsCount}
               participants={participants}
               onlineParticipants={onlineParticipants}
