@@ -29,6 +29,8 @@ export default function GroupChat({ isTeacher }) {
   const [_isLiveChat, setIsLiveChat] = useState(false);
   const [startSize, setStartSize] = useState({ width: 0, height: 0 });
   const [liveStartTime, setLiveStartTime] = useState(null);
+  const [teacherLiveStatus, setTeacherLiveStatus] = useState(false);
+  const [showJoinButton, setShowJoinButton] = useState(false);
 
   const localVideoRef = useRef();
   const remoteVideoRef = useRef();
@@ -114,6 +116,7 @@ export default function GroupChat({ isTeacher }) {
     setLocalStream(stream);
     setIsLiveChat(true);
     setLiveStartTime(new Date());
+    setTeacherLiveStatus(true);
 
     // Send live chat start notification
     await supabase.from("group_messages").insert([
