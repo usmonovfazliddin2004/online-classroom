@@ -242,7 +242,8 @@ export default function GroupChat({ isTeacher }) {
           }
 
           if (type === "live-start") {
-            alert("O'qituvchi live chatni boshladi! Video chatga qo'shilishingiz mumkin.");
+            setTeacherLiveStatus(true);
+            setShowJoinButton(true);
           }
         },
       )
@@ -1651,6 +1652,63 @@ export default function GroupChat({ isTeacher }) {
               }}
               onClose={() => setShowLocationModal(false)}
             />
+          )}
+
+          {/* Teacher Live Status Indicator & Join Button for Students */}
+          {!showRecordings && !isTeacher && teacherLiveStatus && !localStream && showJoinButton && (
+            <div
+              style={{
+                padding: "12px",
+                background: "rgba(239, 68, 68, 0.15)",
+                border: "1px solid rgba(239, 68, 68, 0.4)",
+                borderRadius: "12px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "10px",
+                animation: "pulse 2s infinite",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "20px" }}>🔴</span>
+                <div>
+                  <p style={{ margin: 0, fontSize: "14px", fontWeight: "600", color: "#fca5a5" }}>
+                    O'qituvchi LIVE dars boshladi!
+                  </p>
+                  <p style={{ margin: 0, fontSize: "12px", color: "#fca5a5", opacity: 0.8 }}>
+                    Darsda qatnashish uchun pastdagi tugmani bosing
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={async () => {
+                  setShowJoinButton(false);
+                  await startVideoChat();
+                }}
+                style={{
+                  padding: "10px 20px",
+                  background: "linear-gradient(135deg, #ef4444, #dc2626)",
+                  border: "none",
+                  borderRadius: "10px",
+                  color: "#fff",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  transition: "all 0.3s ease",
+                  boxShadow: "0 4px 15px rgba(239, 68, 68, 0.4)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "scale(1.05)";
+                  e.currentTarget.style.boxShadow = "0 6px 20px rgba(239, 68, 68, 0.6)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1)";
+                  e.currentTarget.style.boxShadow = "0 4px 15px rgba(239, 68, 68, 0.4)";
+                }}
+              >
+                📹 Qo'shilish
+              </button>
+            </div>
           )}
 
           {/* Recording Controls - RecordingControls komponenti */}
