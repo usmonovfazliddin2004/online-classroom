@@ -9,9 +9,33 @@ export default function VideoChat({
   onHandleRemoteMouseDown,
   onHandleResizeMouseDown,
   participantsCount,
+  participants = [],
+  onlineParticipants = [],
+  currentUserId,
   isTeacher = false,
 }) {
   if (!localStream) return null;
+
+  // Ishtirokchilarni online/offline holatiga ko'ra ajratish
+  const getParticipantStatus = (participantId) => {
+    // O'qituvchi har doim online hisoblanadi
+    if (participantId === currentUserId) return 'online';
+    // Online ishtirokchilar ro'yxatida borligini tekshirish
+    if (onlineParticipants.includes(participantId)) return 'online';
+    return 'offline';
+  };
+
+  // Ishtirokchilarni to'liq ismi bilan ko'rsatish
+  const getParticipantName = (participant) => {
+    if (participant.users) {
+      return `${participant.users.first_name || ''} ${participant.users.last_name || ''}`.trim() || participant.student_id;
+    }
+    return participant.student_id;
+  };
+
+  // Online va offline ishtirokchilarni ajratib olish
+  const onlineList = participants.filter(p => getParticipantStatus(p.student_id) === 'online');
+  const offlineList = participants.filter(p => getParticipantStatus(p.student_id) === 'offline');
 
   return (
     <>
@@ -94,6 +118,162 @@ export default function VideoChat({
           >
             📊 {participantsCount || 0} kishi
           </div>
+        </div>
+      )}
+
+      {/* 📊 Qatnashuvchilar ro'yxati (faqat teacherga ko'rinadi) */}
+      {!isTeacher ? null : (
+        <div
+          style={{
+            position: "fixed",
+            right: "20px",
+            top: "20px",
+            width: "280px",
+            background: "rgba(0,0,0,0.85)",
+            border: "1px solid rgba(255,255,255,0.2)",
+            borderRadius: "12px",
+            padding: "14px",
+            zIndex: 1001,
+            maxHeight: "400px",
+            overflowY: "auto",
+            backdropFilter: "blur(10px)",
+          }}
+        >
+          <h4 style={{ margin: "0 0 12px 0", fontSize: "14px", color: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
+            📊 Dars ishtirokchilari
+            <span style={{ 
+              fontSize: "11px", 
+              background: "rgba(59,130,246,0.3)", 
+              padding: "2px 8px", 
+              borderRadius: "10px",
+              color: "#93c5fd"
+            }}>
+              {onlineList.length}/{participantsCount}
+            </span>
+          </h4>
+
+          {/* Online ishtirokchilar */}
+          {onlineList.length > 0 && (
+            <div style={{ marginBottom: "12px" }}>
+              <div style={{ 
+                fontSize: "11px", 
+                color: "#4ade80", 
+                marginBottom: "6px", 
+                fontWeight: "600",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px"
+              }}>
+                <span style={{ 
+                  width: "6px", 
+                  height: "6px", 
+                  background: "#22c55e", 
+                  borderRadius: "50%",
+                  display: "inline-block"
+                }}></span>
+                Darsda ({onlineList.length})
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {onlineList.map((participant) => (
+                  <div
+                    key={participant.student_id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "6px 8px",
+                      background: "rgba(34, 197, 94, 0.1)",
+                      border: "1px solid rgba(34, 197, 94, 0.2)",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      color: "#4ade80",
+                    }}
+                  >
+                    <span style={{ 
+                      width: "8px", 
+                      height: "8px", 
+                      background: "#22c55e", 
+                      borderRadius: "50%",
+                      display: "inline-block",
+                      boxShadow: "0 0 6px rgba(34, 197, 94, 0.5)"
+                    }}></span>
+                    <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {getParticipantName(participant)}
+                    </span>
+                    {participant.student_id === currentUserId && (
+                      <span style={{ fontSize: "10px", opacity: 0.6 }}>Siz</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Offline ishtirokchilar */}
+          {offlineList.length > 0 && (
+            <div>
+              <div style={{ 
+                fontSize: "11px", 
+                color: "#f87171", 
+                marginBottom: "6px", 
+                fontWeight: "600",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px"
+              }}>
+                <span style={{ 
+                  width: "6px", 
+                  height: "6px", 
+                  background: "#ef4444", 
+                  borderRadius: "50%",
+                  display: "inline-block"
+                }}></span>
+                Darsda yo'q ({offlineList.length})
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {offlineList.map((participant) => (
+                  <div
+                    key={participant.student_id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "6px 8px",
+                      background: "rgba(239, 68, 68, 0.08)",
+                      border: "1px solid rgba(239, 68, 68, 0.15)",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      color: "#f87171",
+                      opacity: 0.8,
+                    }}
+                  >
+                    <span style={{ 
+                      width: "8px", 
+                      height: "8px", 
+                      background: "#ef4444", 
+                      borderRadius: "50%",
+                      display: "inline-block"
+                    }}></span>
+                    <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {getParticipantName(participant)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Agar hech kim bo'lmasa */}
+          {participants.length === 0 && (
+            <div style={{ 
+              fontSize: "12px", 
+              color: "#6b7280", 
+              textAlign: "center", 
+              padding: "10px" 
+            }}>
+              Guruhda talabalar yo'q
+            </div>
+          )}
         </div>
       )}
     </>

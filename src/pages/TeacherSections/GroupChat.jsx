@@ -62,8 +62,9 @@ export default function GroupChat({ isTeacher }) {
 
   const [peerConnections, setPeerConnections] = useState({});
 
-  // const [participants, setParticipants] = useState([]);
+  const [participants, setParticipants] = useState([]);
   const [participantsCount, setParticipantsCount] = useState(0);
+  const [onlineParticipants, setOnlineParticipants] = useState([]);
 
   // WebRTC functions
   const createPeerConnection = useCallback(async (participantId) => {
@@ -285,10 +286,11 @@ export default function GroupChat({ isTeacher }) {
     const loadParticipants = async () => {
       const { data, error } = await supabase
         .from("group_members")
-        .select("student_id")
+        .select("student_id, users(first_name, last_name)")
         .eq("group_id", groupId);
 
       if (!error) {
+        setParticipants(data || []);
         setParticipantsCount(data?.length || 0);
       }
     };
@@ -301,7 +303,11 @@ export default function GroupChat({ isTeacher }) {
       },
     });
 
-    channel.on("presence", { event: "sync" }, () => {});
+    channel.on("presence", { event: "sync" }, () => {
+      const state = channel.presenceState();
+      const onlineIds = Object.keys(state);
+      setOnlineParticipants(onlineIds);
+    });
 
     channel.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
@@ -1748,6 +1754,9 @@ export default function GroupChat({ isTeacher }) {
               onHandleRemoteMouseDown={handleRemoteMouseDown}
               onHandleResizeMouseDown={handleResizeMouseDown}
               participantsCount={participantsCount}
+              participants={participants}
+              onlineParticipants={onlineParticipants}
+              currentUserId={userId}
               isTeacher={isTeacher}
             />
           )}
