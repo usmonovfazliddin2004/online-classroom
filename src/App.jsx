@@ -43,6 +43,7 @@ function App() {
         />
       </Route>
 
+
       {/* 👨‍🏫 TEACHER DASHBOARD */}
       <Route path="/teacher" element={<TeacherLayout />}>
         <Route index element={<TeacherPage />} />

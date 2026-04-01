@@ -675,10 +675,10 @@ export default function TeacherPage() {
 
             <div className="actions">
               <button className="yes" onClick={() => navigate("/login")}>
-                🚪 Ha
+                <i className="fa-solid fa-right-from-bracket"></i> Ha
               </button>
               <button className="no" onClick={() => setShowLogout(false)}>
-                ❌ Yo‘q
+                <i className="fa-solid fa-xmark"></i> Yo‘q
               </button>
             </div>
           </div>
@@ -1178,13 +1178,44 @@ body { margin: 0; }
   margin-top: 12px;
 }
 
-.yes {
-  width: 120px;
+.logout-container {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
 }
 
-.no {
-  width: 120px;
+.yes {
+  flex: 1;
+  padding: 15px;
+  border-radius: 14px;
+  border: none;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.25s ease;
 }
+  .no {
+  flex: 1;
+  padding: 15px;
+  border-radius: 14px;
+  border: none;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.25s ease;
+  }
 
 .divider {
   width: 3px;

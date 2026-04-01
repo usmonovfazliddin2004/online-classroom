@@ -23,7 +23,6 @@ export default function StudentGroups() {
   const loadGroups = useCallback(async () => {
     try {
       setLoading(true);
-      console.log("📍 Loading groups for studentId:", studentId);
       
       // Get all groups where this student is a member
       const { data: membershipData, error: membershipError } = await supabase
@@ -31,7 +30,6 @@ export default function StudentGroups() {
         .select("group_id")
         .eq("student_id", studentId);
 
-      console.log("📍 Membership data:", membershipData, "Error:", membershipError);
 
       if (membershipError) {
         console.error("❌ Membership fetch error:", membershipError);
@@ -40,13 +38,11 @@ export default function StudentGroups() {
       }
 
       if (!membershipData || membershipData.length === 0) {
-        console.log("⚠️ No groups found for this student");
         setGroups([]);
         return;
       }
 
       const groupIds = membershipData.map((m) => m.group_id);
-      console.log("📍 Group IDs:", groupIds);
 
       // Get group details for these IDs
       const { data: groupsData, error: groupsError } = await supabase
@@ -55,7 +51,6 @@ export default function StudentGroups() {
         .in("id", groupIds)
         .order("created_at", { ascending: false });
 
-      console.log("📍 Groups data:", groupsData, "Error:", groupsError);
 
       if (groupsError) {
         console.error("❌ Groups fetch error:", groupsError);
@@ -64,21 +59,18 @@ export default function StudentGroups() {
       }
 
       if (!groupsData || groupsData.length === 0) {
-        console.log("⚠️ No group data returned");
         setGroups([]);
         return;
       }
 
       // Get teacher details for all groups
       const teacherIds = groupsData.map((g) => g.teacher_id);
-      console.log("📍 Teacher IDs:", teacherIds);
       
       const { data: teachers, error: teachersError } = await supabase
         .from("users")
         .select("id, first_name, last_name")
         .in("id", teacherIds);
 
-      console.log("📍 Teachers data:", teachers, "Error:", teachersError);
 
       if (teachersError) {
         console.error("❌ Teachers fetch error:", teachersError);
@@ -95,7 +87,6 @@ export default function StudentGroups() {
         };
       });
 
-      console.log("✅ Groups with teachers:", groupsWithTeachers);
       setGroups(groupsWithTeachers);
     } catch (err) {
       console.error("❌ Error loading groups:", err);
@@ -113,7 +104,6 @@ export default function StudentGroups() {
 
   const loadGroupMembers = async (groupId) => {
     try {
-      console.log("📍 Loading members for group:", groupId);
       
       // Get all member IDs from this group
       const { data: memberData, error: memberError } = await supabase
@@ -126,7 +116,6 @@ export default function StudentGroups() {
         return;
       }
 
-      console.log("📍 Member data:", memberData);
 
       if (!memberData || memberData.length === 0) {
         setGroupMembers([]);
@@ -134,7 +123,6 @@ export default function StudentGroups() {
       }
 
       const studentIds = memberData.map((m) => m.student_id);
-      console.log("📍 Student IDs:", studentIds);
 
       // Get user details for all students
       const { data: users, error: usersError } = await supabase
@@ -142,7 +130,6 @@ export default function StudentGroups() {
         .select("id, first_name, last_name, email")
         .in("id", studentIds);
 
-      console.log("📍 Users data:", users, "Error:", usersError);
 
       if (usersError) {
         console.error("❌ Users fetch error:", usersError);
@@ -162,7 +149,6 @@ export default function StudentGroups() {
         };
       });
 
-      console.log("✅ Members with users:", membersWithUsers);
       setGroupMembers(membersWithUsers);
     } catch (err) {
       console.error("❌ Error loading members:", err);
@@ -221,7 +207,7 @@ export default function StudentGroups() {
               <h2>{selectedGroup.name}</h2>
               <div style={styles.modalActions}>
                 <button
-                  onClick={() => navigate(`group-chat/${selectedGroup.id}/${selectedGroup.name}`)}
+                  onClick={() => navigate(`/student/group-chat/${selectedGroup.id}/${encodeURIComponent(selectedGroup.name)}`)}
                   style={styles.chatBtn}
                 >
                   💬 Chat
