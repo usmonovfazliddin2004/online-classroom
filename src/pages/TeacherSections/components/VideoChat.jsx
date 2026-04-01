@@ -17,6 +17,26 @@ export default function VideoChat({
   isTeacher = false,
   remoteStream, // ✅ FIX: Add remoteStream prop for student view
 }) {
+  // ✅ FIX: Move all hooks BEFORE any conditional return
+  // Ishtirokchilar paneli uchun state
+  const [panelPosition, setPanelPosition] = useState({
+    x: window.innerWidth - 300,
+    y: 20,
+  });
+
+  const [panelSize, setPanelSize] = useState({
+    width: 280,
+    height: 400,
+  });
+
+  const [isDraggingPanel, setIsDraggingPanel] = useState(false);
+  const [panelDragOffset, setPanelDragOffset] = useState({ x: 0, y: 0 });
+
+  const [isResizingPanel, setIsResizingPanel] = useState(false);
+  const [panelResizeStart, setPanelResizeStart] = useState({ x: 0, y: 0 });
+  const [panelStartSize, setPanelStartSize] = useState({ width: 0, height: 0 });
+
+  // Early return if no localStream
   if (!localStream) return null;
 
   // ✅ FIX: Participant status logic - joined vs pending
@@ -46,24 +66,6 @@ export default function VideoChat({
   const pendingList = participants.filter(
     (p) => getParticipantStatus(p.student_id) === "pending",
   );
-
-  // Ishtirokchilar paneli uchun state
-  const [panelPosition, setPanelPosition] = useState({
-    x: window.innerWidth - 300,
-    y: 20,
-  });
-
-  const [panelSize, setPanelSize] = useState({
-    width: 280,
-    height: 400,
-  });
-
-  const [isDraggingPanel, setIsDraggingPanel] = useState(false);
-  const [panelDragOffset, setPanelDragOffset] = useState({ x: 0, y: 0 });
-
-  const [isResizingPanel, setIsResizingPanel] = useState(false);
-  const [panelResizeStart, setPanelResizeStart] = useState({ x: 0, y: 0 });
-  const [panelStartSize, setPanelStartSize] = useState({ width: 0, height: 0 });
 
   const handlePanelMouseDown = (e) => {
     e.stopPropagation();
@@ -477,8 +479,8 @@ export default function VideoChat({
         </div>
       )}
 
-      {/* 🎥 STUDENT VIEW - O'quvchilar uchun video */}
-      {!isTeacher && localStream && (
+      {/* 🎥 STUDENT VIEW - O'quvchilar uchun video (o'qituvchini ko'radi) */}
+      {!isTeacher && remoteStream && (
         <div
           style={{
             position: "fixed",
@@ -490,15 +492,14 @@ export default function VideoChat({
           }}
         >
           <video
-            ref={localVideoRef}
+            ref={remoteVideoRef}
             autoPlay
-            muted
             playsInline
             style={{
               width: "100%",
               height: "100%",
               borderRadius: "12px",
-              border: "2px solid rgba(255,255,255,0.3)",
+              border: "2px solid rgba(59, 130, 246, 0.5)",
               background: "#000",
             }}
           />
@@ -534,6 +535,23 @@ export default function VideoChat({
             }}
           >
             📊 {participantsCount || 0} kishi
+          </div>
+
+          {/* O'qituvchi ekrani yorlig'i */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: "8px",
+              left: "8px",
+              background: "rgba(59, 130, 246, 0.8)",
+              color: "#fff",
+              padding: "4px 8px",
+              borderRadius: "4px",
+              fontSize: "11px",
+              fontWeight: "600",
+            }}
+          >
+            👨‍🏫 O'qituvchi
           </div>
         </div>
       )}
