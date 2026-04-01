@@ -1,0 +1,1 @@
+// Translations file has been removed - app now uses hardcoded Uzbek text only
