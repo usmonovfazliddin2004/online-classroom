@@ -16,13 +16,13 @@ export default function VideoChat({
 }) {
   if (!localStream) return null;
 
-  // Ishtirokchilarni online/offline holatiga ko'ra ajratish
+  // Ishtirokchilarni statusiga ko'ra ajratish
   const getParticipantStatus = (participantId) => {
     // O'qituvchi har doim online hisoblanadi
     if (participantId === currentUserId) return 'online';
     // Online ishtirokchilar ro'yxatida borligini tekshirish
     if (onlineParticipants.includes(participantId)) return 'online';
-    return 'offline';
+    return 'pending';
   };
 
   // Ishtirokchilarni to'liq ismi bilan ko'rsatish
@@ -33,9 +33,9 @@ export default function VideoChat({
     return participant.student_id;
   };
 
-  // Online va offline ishtirokchilarni ajratib olish
+  // Status bo'yicha ishtirokchilarni guruhlash
   const onlineList = participants.filter(p => getParticipantStatus(p.student_id) === 'online');
-  const offlineList = participants.filter(p => getParticipantStatus(p.student_id) === 'offline');
+  const pendingList = participants.filter(p => getParticipantStatus(p.student_id) === 'pending');
 
   return (
     <>
@@ -209,12 +209,12 @@ export default function VideoChat({
             </div>
           )}
 
-          {/* Offline ishtirokchilar */}
-          {offlineList.length > 0 && (
+          {/* Pending ishtirokchilar */}
+          {pendingList.length > 0 && (
             <div>
               <div style={{ 
                 fontSize: "11px", 
-                color: "#f87171", 
+                color: "#facc15", 
                 marginBottom: "6px", 
                 fontWeight: "600",
                 display: "flex",
@@ -224,14 +224,14 @@ export default function VideoChat({
                 <span style={{ 
                   width: "6px", 
                   height: "6px", 
-                  background: "#ef4444", 
+                  background: "#eab308", 
                   borderRadius: "50%",
                   display: "inline-block"
                 }}></span>
-                Darsda yo'q ({offlineList.length})
+                Kutilmoqda ({pendingList.length})
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                {offlineList.map((participant) => (
+                {pendingList.map((participant) => (
                   <div
                     key={participant.student_id}
                     style={{
@@ -239,18 +239,17 @@ export default function VideoChat({
                       alignItems: "center",
                       gap: "8px",
                       padding: "6px 8px",
-                      background: "rgba(239, 68, 68, 0.08)",
-                      border: "1px solid rgba(239, 68, 68, 0.15)",
+                      background: "rgba(234, 179, 8, 0.1)",
+                      border: "1px solid rgba(234, 179, 8, 0.2)",
                       borderRadius: "6px",
                       fontSize: "12px",
-                      color: "#f87171",
-                      opacity: 0.8,
+                      color: "#facc15",
                     }}
                   >
                     <span style={{ 
                       width: "8px", 
                       height: "8px", 
-                      background: "#ef4444", 
+                      background: "#eab308", 
                       borderRadius: "50%",
                       display: "inline-block"
                     }}></span>
@@ -278,7 +277,7 @@ export default function VideoChat({
       )}
 
       {/* 🎥 STUDENT VIEW - O'quvchilar uchun video */}
-      {isTeacher ? null : (
+      {!isTeacher && localStream && (
         <div
           style={{
             position: "fixed",

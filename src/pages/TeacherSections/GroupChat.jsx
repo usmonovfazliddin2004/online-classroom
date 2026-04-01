@@ -236,6 +236,20 @@ export default function GroupChat({ isTeacher }) {
             }
           }
 
+          if (type === "answer") {
+            const pc = peerConnectionsRef.current[sender_id];
+            if (pc) {
+              await pc.setRemoteDescription(new RTCSessionDescription(data));
+            }
+          }
+
+          if (type === "ice-candidate") {
+            const pc = peerConnectionsRef.current[sender_id];
+            if (pc) {
+              await pc.addIceCandidate(new RTCIceCandidate(data));
+            }
+          }
+
           if (type === "kick") {
             alert("Sizni o'qituvchi live chatdan chiqarib yubordi");
             stopVideoChat();
