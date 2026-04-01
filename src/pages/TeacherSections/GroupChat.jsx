@@ -83,6 +83,7 @@ export default function GroupChat({ isTeacher }) {
   const [participants, setParticipants] = useState([]);
   const [participantsCount, setParticipantsCount] = useState(0);
   const [onlineParticipants, setOnlineParticipants] = useState([]);
+  const [joinedParticipants, setJoinedParticipants] = useState([]); // ✅ NEW: Track who joined live stream
 
   // WebRTC functions
   const createPeerConnection = useCallback(async (participantId) => {
@@ -1236,6 +1237,14 @@ export default function GroupChat({ isTeacher }) {
       setLocalStream(stream);
       currentStreamRef.current = stream;
       setIsLiveChat(true);
+
+      // ✅ FIX: Mark student as joined when they start video chat
+      setJoinedParticipants(prev => {
+        if (!prev.includes(userId)) {
+          return [...prev, userId];
+        }
+        return prev;
+      });
     }
   };
 
@@ -1879,7 +1888,7 @@ export default function GroupChat({ isTeacher }) {
               onHandlePanelResizeMouseDown={handlePanelResizeMouseDown}
               participantsCount={participantsCount}
               participants={participants}
-              onlineParticipants={onlineParticipants}
+              joinedParticipants={joinedParticipants}
               currentUserId={userId}
               isTeacher={isTeacher}
             />
