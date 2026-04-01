@@ -519,6 +519,12 @@ export default function GroupChat({ isTeacher }) {
 
             if (!data) return;
 
+            // If this is a system message about live chat starting, show join button for students
+            if (!isTeacher && data.message_type === "system" && data.message.includes("🔴 LIVE")) {
+              setTeacherLiveStatus(true);
+              setShowJoinButton(true);
+            }
+
             setMessages((prev) => {
               const filtered = prev.filter((m) => {
                 if (!String(m.id).startsWith("temp-")) return true;
