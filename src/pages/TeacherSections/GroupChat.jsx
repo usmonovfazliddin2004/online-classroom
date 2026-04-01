@@ -1229,22 +1229,56 @@ export default function GroupChat({ isTeacher }) {
     if (isTeacher) {
       await startLiveChat();
     } else {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
 
-      setLocalStream(stream);
-      currentStreamRef.current = stream;
-      setIsLiveChat(true);
+        setLocalStream(stream);
+        currentStreamRef.current = stream;
+        setIsLiveChat(true);
 
-      // ✅ FIX: Mark student as joined when they start video chat
-      setJoinedParticipants(prev => {
-        if (!prev.includes(userId)) {
-          return [...prev, userId];
+        // ✅ FIX: Mark student as joined when they start video chat
+        setJoinedParticipants(prev => {
+          if (!prev.includes(userId)) {
+            return [...prev, userId];
+          }
+          return prev;
+        });
+
+        // ✅ FIX: Send join notification to teacher
+        await supabase.from("webrtc_signaling").insert([
+          {
+            group_id: groupId,
+            sender_id: userId,
+            receiver_id: participants.find(p => p.student_id !== userId)?.student_id || userId, // Teacher ID needed
+            type: "student-joined",
+            data: { message: "Student joined live chat", studentId: userId },
+          },
+        ]);
+
+        // ✅ FIX: Create offer to teacher for receiving their stream
+        const teacherId = participants.find(p => p.users)?.student_id; // Need to get teacher ID properly
+        if (teacherId) {
+          const pc = await createPeerConnection(teacherId);
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          
+          await supabase.from("webrtc_signaling").insert([
+            {
+              group_id: groupId,
+              sender_id: userId,
+              receiver_id: teacherId,
+              type: "offer",
+              data: offer,
+            },
+          ]);
         }
-        return prev;
-      });
+      } catch (err) {
+        console.error("❌ Video chat error:", err);
+        alert("❌ Video chatga ulanishda xatolik: " + err.message);
+      }
     }
   };
 
