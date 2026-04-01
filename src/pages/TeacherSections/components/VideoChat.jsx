@@ -276,6 +276,67 @@ export default function VideoChat({
           )}
         </div>
       )}
+
+      {/* 🎥 STUDENT VIEW - O'quvchilar uchun video */}
+      {isTeacher ? null : (
+        <div
+          style={{
+            position: "fixed",
+            left: videoPosition.x,
+            top: videoPosition.y,
+            width: videoSize.width,
+            height: videoSize.height,
+            zIndex: 1000,
+          }}
+        >
+          <video
+            ref={localVideoRef}
+            autoPlay
+            muted
+            playsInline
+            style={{
+              width: "100%",
+              height: "100%",
+              borderRadius: "12px",
+              border: "2px solid rgba(255,255,255,0.3)",
+              background: "#000",
+            }}
+          />
+
+          {/* 🔥 RESIZE HANDLE */}
+          <div
+            onMouseDown={onHandleResizeMouseDown}
+            style={{
+              position: "absolute",
+              right: "0",
+              bottom: "0",
+              width: "16px",
+              height: "16px",
+              background: "rgba(255,255,255,0.6)",
+              cursor: "nwse-resize",
+              borderRadius: "4px",
+            }}
+          />
+
+          {/* Qatnashuvchilar soni (talabaga ham ko'rinadi) */}
+          <div
+            style={{
+              position: "absolute",
+              top: "8px",
+              left: "8px",
+              background: "rgba(0,0,0,0.7)",
+              color: "#fff",
+              padding: "6px 10px",
+              borderRadius: "6px",
+              fontSize: "12px",
+              fontWeight: "600",
+              border: "1px solid rgba(255,255,255,0.2)",
+            }}
+          >
+            📊 {participantsCount || 0} kishi
+          </div>
+        </div>
+      )}
     </>
   );
 }
