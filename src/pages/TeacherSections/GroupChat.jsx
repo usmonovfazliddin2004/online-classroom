@@ -1748,6 +1748,7 @@ export default function GroupChat({ isTeacher }) {
               onHandleRemoteMouseDown={handleRemoteMouseDown}
               onHandleResizeMouseDown={handleResizeMouseDown}
               participantsCount={participantsCount}
+              isTeacher={isTeacher}
             />
           )}
         </div>
