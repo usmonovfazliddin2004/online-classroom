@@ -82,7 +82,7 @@ export default function GroupChat({ isTeacher }) {
 
   const [participants, setParticipants] = useState([]);
   const [participantsCount, setParticipantsCount] = useState(0);
-  const [onlineParticipants, setOnlineParticipants] = useState([]);
+  const [_onlineParticipants, setOnlineParticipants] = useState([]); // eslint-disable-line no-unused-vars
   const [joinedParticipants, setJoinedParticipants] = useState([]); // ✅ NEW: Track who joined live stream
 
   // WebRTC functions
@@ -222,6 +222,22 @@ export default function GroupChat({ isTeacher }) {
     setPeerConnections({});
   }, [localStream, liveStartTime, groupId, userId, peerConnections]);
 
+  // ✅ FIX: Define stopVideoChat BEFORE it's used in useEffect to avoid TDZ error
+  const stopVideoChat = useCallback(() => {
+    if (isTeacher) {
+      stopLiveChat();
+    } else {
+      if (localStream) {
+        localStream.getTracks().forEach((track) => track.stop());
+      }
+      setLocalStream(null);
+      setIsLiveChat(false);
+      // ✅ FIX: Show join button again if teacher's live chat is still active
+      if (teacherLiveStatus) {
+        setShowJoinButton(true);
+      }
+    }
+  }, [isTeacher, localStream, stopLiveChat, teacherLiveStatus]);
 
   const peerConnectionsRef = useRef({});
 
@@ -1314,22 +1330,6 @@ export default function GroupChat({ isTeacher }) {
       }
     }
   };
-
-  const stopVideoChat = useCallback(() => {
-    if (isTeacher) {
-      stopLiveChat();
-    } else {
-      if (localStream) {
-        localStream.getTracks().forEach((track) => track.stop());
-      }
-      setLocalStream(null);
-      setIsLiveChat(false);
-      // ✅ FIX: Show join button again if teacher's live chat is still active
-      if (teacherLiveStatus) {
-        setShowJoinButton(true);
-      }
-    }
-  }, [isTeacher, localStream, stopLiveChat, teacherLiveStatus]);
 
   const stopRecording = () => {
     if (mediaRecorderRef.current) {
