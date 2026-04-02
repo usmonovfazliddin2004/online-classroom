@@ -177,6 +177,7 @@ export default function GroupChat({ isTeacher }) {
     }
     setLocalStream(null);
     setIsLiveChat(false);
+    setTeacherLiveStatus(false);
 
     // Calculate duration
     const duration = liveStartTime ? Math.floor((new Date() - liveStartTime) / 1000) : 0;
@@ -193,6 +194,28 @@ export default function GroupChat({ isTeacher }) {
         message_type: "system",
       },
     ]);
+
+    // Notify all participants about live chat end
+    const { data: groupParticipants } = await supabase
+      .from("group_members")
+      .select("student_id")
+      .eq("group_id", groupId);
+
+    if (groupParticipants) {
+      for (const participant of groupParticipants) {
+        if (participant.student_id !== userId) {
+          await supabase.from("webrtc_signaling").insert([
+            {
+              group_id: groupId,
+              sender_id: userId,
+              receiver_id: participant.student_id,
+              type: "live-end",
+              data: { message: "Teacher ended live chat" },
+            },
+          ]);
+        }
+      }
+    }
 
     // Close peer connections
     Object.values(peerConnections).forEach((pc) => pc.close());
@@ -296,12 +319,22 @@ export default function GroupChat({ isTeacher }) {
             setTeacherLiveStatus(true);
             setShowJoinButton(true);
           }
+
+          // ✅ FIX: Handle live-end signal from teacher
+          if (type === "live-end") {
+            setTeacherLiveStatus(false);
+            setShowJoinButton(false);
+            // Stop student's video chat if they were connected
+            if (localStream) {
+              stopVideoChat();
+            }
+          }
         },
       )
       .subscribe();
 
     return () => subscription.unsubscribe();
-  }, [groupId, userId, createPeerConnection]);
+  }, [groupId, userId, createPeerConnection, localStream, stopVideoChat]);
 
   const handleResizeMouseDown = (e) => {
     e.stopPropagation();
@@ -1291,8 +1324,12 @@ export default function GroupChat({ isTeacher }) {
       }
       setLocalStream(null);
       setIsLiveChat(false);
+      // ✅ FIX: Show join button again if teacher's live chat is still active
+      if (teacherLiveStatus) {
+        setShowJoinButton(true);
+      }
     }
-  }, [isTeacher, localStream, stopLiveChat]);
+  }, [isTeacher, localStream, stopLiveChat, teacherLiveStatus]);
 
   const stopRecording = () => {
     if (mediaRecorderRef.current) {
