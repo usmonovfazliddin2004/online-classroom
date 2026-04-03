@@ -205,7 +205,6 @@ export default function StudentDashboard() {
         return;
       }
 
-
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error("Fayl yuklab bo‘lmadi");
@@ -224,7 +223,6 @@ export default function StudentDashboard() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-
     } catch (err) {
       console.error(err);
       toast.error("Faylni yuklashda xatolik");
@@ -370,75 +368,6 @@ export default function StudentDashboard() {
                         {selectedCourseId === courseId ? "✕" : "+"}
                       </button>
                     </div>
-
-                    {selectedCourseId === courseId && (
-                      <div style={styles.lessonArea}>
-                        {loadingLessonsFor === courseId ? (
-                          <p>Yuklanmoqda...</p>
-                        ) : lessons.length === 0 ? (
-                          <p>Darslar topilmadi.</p>
-                        ) : (
-                          <ul style={styles.requestsList}>
-                            {lessons.map((lesson, idx) => (
-                              <li key={lesson.id} style={styles.lessonItem}>
-                                <div style={styles.lessonCard}>
-                                  {/* 🔢 Title row */}
-                                  <div style={styles.lessonHeader}>
-                                    <div style={styles.lessonNumber}>
-                                      {idx + 1}
-                                    </div>
-                                    <div>
-                                      <strong style={styles.lessonTitle}>
-                                        {lesson.title || "Noma‘lum mavzu"}
-                                      </strong>
-                                      <p style={styles.lessonDesc}>
-                                        {lesson.description || "Tavsif yo‘q"}
-                                      </p>
-                                    </div>
-                                  </div>
-
-                                  {/* 📎 Files */}
-                                  <div style={styles.lessonFiles}>
-                                    {lesson.video_url && (
-                                      <a
-                                        href={lesson.video_url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        style={styles.fileBtn}
-                                      >
-                                        🎥 Video link
-                                      </a>
-                                    )}
-                                 
-                                    {Array.isArray(lesson.source_files) &&
-                                      lesson.source_files.length > 0 &&
-                                      lesson.source_files.map((source, i) => (
-                                        <button
-                                          key={i}
-                                          onClick={() => {
-                                            const fileUrl =
-                                              source?.url || source;
-
-                                            if (!fileUrl) {
-                                              toast.error("File topilmadi");
-                                              return;
-                                            }
-
-                                            downloadFile(lesson.video_file);
-                                          }}
-                                          style={styles.fileBtn}
-                                        >
-                                          📄 Fayl #{i + 1}
-                                        </button>
-                                      ))}
-                                  </div>
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -464,6 +393,96 @@ export default function StudentDashboard() {
         </div>
       )}
 
+      {/* Lessons Modal */}
+      {selectedCourseId && (
+        <div
+          style={styles.modalOverlay}
+          onClick={() => setSelectedCourseId(null)}
+        >
+          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <h3 style={styles.modalTitle}>
+                {(() => {
+                  const course = acceptedCourses.find(
+                    (c) => c.course_id === selectedCourseId,
+                  );
+                  return course?.courses?.title || "Darslar";
+                })()}
+              </h3>
+              <button
+                onClick={() => setSelectedCourseId(null)}
+                style={styles.modalCloseBtn}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={styles.modalBody} className="modal-scrollbar-hide">
+              {loadingLessonsFor === selectedCourseId ? (
+                <p style={styles.loadingText}>Yuklanmoqda...</p>
+              ) : (
+                (() => {
+                  const lessons = lessonsByCourse[selectedCourseId] || [];
+                  if (lessons.length === 0) {
+                    return <p style={styles.emptyText}>Darslar topilmadi.</p>;
+                  }
+                  return (
+                    <ul style={styles.requestsList}>
+                      {lessons.map((lesson, idx) => (
+                        <li key={lesson.id} style={styles.lessonItem}>
+                          <div style={styles.lessonCard}>
+                            <div style={styles.lessonHeader}>
+                              <div style={styles.lessonNumber}>{idx + 1}</div>
+                              <div>
+                                <strong style={styles.lessonTitle}>
+                                  {lesson.title || "Noma'lum mavzu"}
+                                </strong>
+                                <p style={styles.lessonDesc}>
+                                  {lesson.description || "Tavsif yo'q"}
+                                </p>
+                              </div>
+                            </div>
+                            <div style={styles.lessonFiles}>
+                              {lesson.video_url && (
+                                <a
+                                  href={lesson.video_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  style={styles.fileBtn}
+                                >
+                                  🎥 Video link
+                                </a>
+                              )}
+                              {Array.isArray(lesson.source_files) &&
+                                lesson.source_files.length > 0 &&
+                                lesson.source_files.map((source, i) => (
+                                  <button
+                                    key={i}
+                                    onClick={() => {
+                                      const fileUrl = source?.url || source;
+                                      if (!fileUrl) {
+                                        toast.error("File topilmadi");
+                                        return;
+                                      }
+                                      downloadFile(fileUrl);
+                                    }}
+                                    style={styles.fileBtn}
+                                  >
+                                    📄 Fayl #{i + 1}
+                                  </button>
+                                ))}
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  );
+                })()
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hide sidebar when settings modal is open */}
       {showSettings && (
         <style>{`
@@ -471,6 +490,21 @@ export default function StudentDashboard() {
         main { width: 100% !important; margin-left: 0 !important; }
       `}</style>
       )}
+
+      {/* Modal scrollbar hide + fadeIn animation */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .modal-scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .modal-scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 }
@@ -478,9 +512,10 @@ export default function StudentDashboard() {
 const styles = {
   container: {
     padding: "30px",
-    background: "linear-gradient(135deg, #0f172a, #1e293b)",
+    background: "radial-gradient(circle at top, #1e293b, #020617)",
     minHeight: "92vh",
     color: "white",
+    fontFamily: "system-ui, sans-serif",
   },
 
   title: {
@@ -605,12 +640,6 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
   },
-  lessonArea: {
-    marginTop: "10px",
-    padding: "10px",
-    background: "rgba(15, 23, 42, 0.6)",
-    borderRadius: "10px",
-  },
   lessonItem: {
     marginBottom: "10px",
     borderBottom: "1px solid rgba(255,255,255,0.1)",
@@ -716,5 +745,73 @@ const styles = {
     color: "#7dd3fc",
     textDecoration: "none",
     transition: "0.2s",
+  },
+
+  // Modal styles
+  modalOverlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: "rgba(0, 0, 0, 0.7)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1001,
+    animation: "fadeIn 0.2s ease-out",
+  },
+  modalContent: {
+    background: "linear-gradient(135deg, #1e293b, #0f172a)",
+    borderRadius: "16px",
+    width: "90%",
+    maxWidth: "700px",
+    maxHeight: "80vh",
+    display: "flex",
+    flexDirection: "column",
+    boxShadow: "0 20px 60px rgba(0, 0, 0, 0.5)",
+    border: "1px solid rgba(255, 255, 255, 0.1)",
+  },
+  modalHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "20px 24px",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+  },
+  modalTitle: {
+    fontSize: "20px",
+    fontWeight: "bold",
+    color: "white",
+    margin: 0,
+  },
+  modalCloseBtn: {
+    background: "rgba(239, 68, 68, 0.15)",
+    border: "1px solid rgba(239, 68, 68, 0.4)",
+    color: "#f87171",
+    width: "36px",
+    height: "36px",
+    borderRadius: "50%",
+    fontSize: "18px",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "0.2s",
+  },
+  modalBody: {
+    flex: 1,
+    overflowY: "auto",
+    padding: "20px 24px",
+  },
+  loadingText: {
+    color: "rgba(255, 255, 255, 0.7)",
+    textAlign: "center",
+    padding: "20px",
+  },
+  emptyText: {
+    color: "rgba(255, 255, 255, 0.7)",
+    textAlign: "center",
+    padding: "20px",
   },
 };
