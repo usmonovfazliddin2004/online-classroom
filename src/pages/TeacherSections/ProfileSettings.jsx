@@ -150,7 +150,7 @@ export default function TeacherProfile() {
     console.log("UPLOAD:", data, error);
 
     if (error || !data) {
-      setToast("Avatar yuklashda xatolik ❌");
+      setToast("Avatar yuklashda xatolik");
       setUploading(false);
       return;
     }
@@ -169,7 +169,7 @@ export default function TeacherProfile() {
       .update({ avatar_url: newUrl })
       .eq("id", userId);
 
-    setToast("Avatar yangilandi ✅");
+    setToast("Avatar yangilandi");
 
     setTimeout(() => setToast(""), 3000);
     setUploading(false);
@@ -178,7 +178,7 @@ export default function TeacherProfile() {
   /* ================= SAVE ================= */
   const handleSave = async () => {
     if (form.phone && !isValidPhoneNumber(form.phone)) {
-      setToast("Telefon raqam noto‘g‘ri ❌");
+      setToast("Telefon raqam noto‘g‘ri");
       setTimeout(() => setToast(""), 3000);
       return;
     }
@@ -200,7 +200,7 @@ export default function TeacherProfile() {
       await supabase.auth.updateUser({ password: form.password });
     }
 
-    setToast(error ? "Xatolik yuz berdi ❌" : "Profil saqlandi ✅");
+    setToast(error ? "Xatolik yuz berdi" : "Profil saqlandi");
     setDirty(false);
     setLoading(false);
 

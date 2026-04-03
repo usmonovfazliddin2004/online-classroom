@@ -1,4 +1,9 @@
+import { useState, useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import ConfirmModal from "./components/ConfirmModal";
+
 
 import PublicLayout from "./layout/PublicLayout";
 import TeacherLayout from "./layout/TeacherLayout";
@@ -22,8 +27,58 @@ import Groups from "./pages/TeacherSections/Group";
 import GroupChat from "./pages/TeacherSections/GroupChat";
 
 function App() {
+  const [confirmState, setConfirmState] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+  });
+
+  const showConfirm = (title, message, onConfirm) => {
+    setConfirmState({
+      isOpen: true,
+      title,
+      message,
+      onConfirm,
+    });
+  };
+
+  const closeConfirm = () => {
+    setConfirmState({
+      isOpen: false,
+      title: "",
+      message: "",
+      onConfirm: null,
+    });
+  };
+
+  // Make showConfirm globally available via window
+  useEffect(() => {
+    window.showConfirm = showConfirm;
+  }, []);
+
   return (
-    <Routes>
+    <>
+      <ToastContainer
+        position="top-center"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        onClose={closeConfirm}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        message={confirmState.message}
+      />
+      <Routes>
       {/* 🌍 PUBLIC PAGES */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<Home />} />
@@ -62,6 +117,7 @@ function App() {
         </Route>
       </Route>
     </Routes>
+    </>
   );
 }
 

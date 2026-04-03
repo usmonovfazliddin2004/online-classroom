@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabase";
+import { toast } from "react-toastify";
 import AcceptedStudents from "./AcceptedStudents";
 import {
   PieChart,
@@ -40,6 +41,13 @@ export default function TeacherPage() {
   const [youtubeLink, setYoutubeLink] = useState("");
   const [requests, setRequests] = useState([]);
   const [studentsCount, setStudentsCount] = useState(0);
+
+  const formatFileName = (url) => {
+    return decodeURIComponent(url.split("/").pop().split("?")[0])
+      .replace(/^\d+[-_]/, "")
+      .replace(/_+/g, " ")
+      .replace(/-+/g, " ");
+  };
 
   const loadRequests = async (teacherId) => {
     const { data, error } = await supabase
@@ -104,8 +112,20 @@ export default function TeacherPage() {
 
   // ❌ DELETE COURSE
   const deleteCourse = async (courseId) => {
-    const ok = window.confirm("Kursni o‘chirmoqchimisiz?");
-    if (!ok) return;
+    // Show custom confirm modal
+    const confirmed = await new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve(false), 5000);
+      window.showConfirm(
+        "Kursni o'chirish",
+        "Kursni o'chirmoqchimisiz?",
+        () => {
+          clearTimeout(timeout);
+          resolve(true);
+        },
+      );
+    });
+
+    if (!confirmed) return;
 
     const { error: deleteRequestsError } = await supabase
       .from("course_requests")
@@ -113,17 +133,22 @@ export default function TeacherPage() {
       .eq("course_id", courseId);
 
     if (deleteRequestsError) {
-      alert("Course requests o'chirishda xato: " + deleteRequestsError.message);
+      toast.error(
+        "Course requests o'chirishda xato: " + deleteRequestsError.message,
+      );
       return;
     }
 
-    const { error } = await supabase.from("courses").delete().eq("id", courseId);
+    const { error } = await supabase
+      .from("courses")
+      .delete()
+      .eq("id", courseId);
     if (error) {
-      alert("Kursni o'chirishda xato: " + error.message);
+      toast.error("Kursni o'chirishda xato: " + error.message);
       return;
     }
     setCourses(courses.filter((c) => c.id !== courseId));
-    alert("✅ Kurs o'chirildi!");
+    toast.success("Kurs o'chirildi!");
   };
 
   // 📚 LOAD LESSONS
@@ -143,9 +168,20 @@ export default function TeacherPage() {
 
   // 🗑️ DELETE LESSON
   const deleteLesson = async (lessonId, courseName) => {
-    if (!window.confirm(`"${courseName}" darsini o'chirishga ishonchingiz komilmi?`)) {
-      return;
-    }
+    // Show custom confirm modal
+    const confirmed = await new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve(false), 5000);
+      window.showConfirm(
+        "Darsni o'chirish",
+        `"${courseName}" darsini o'chirishga ishonchingiz komilmi?`,
+        () => {
+          clearTimeout(timeout);
+          resolve(true);
+        },
+      );
+    });
+
+    if (!confirmed) return;
 
     const { error } = await supabase
       .from("lessons")
@@ -153,17 +189,17 @@ export default function TeacherPage() {
       .eq("id", lessonId);
 
     if (error) {
-      alert("❌ Darsni o'chirishda xatolik: " + error.message);
+      toast.error("Darsni o'chirishda xatolik: " + error.message);
       return;
     }
 
-    alert("✅ Dars o'chirildi!");
-    
+    toast.success("Dars o'chirildi!");
+
     // Agar o'chirilgan dars active bo'lsa, uni tozalash
     if (activeLesson?.id === lessonId) {
       setActiveLesson(null);
     }
-    
+
     // Lessonlar ro'yxatini yangilash
     setLessons(lessons.filter((l) => l.id !== lessonId));
   };
@@ -171,7 +207,7 @@ export default function TeacherPage() {
   const saveLesson = async () => {
     try {
       if (!currentCourseId) {
-        alert("Kurs tanlanmagan!");
+        toast.error("Kurs tanlanmagan!");
         return;
       }
 
@@ -180,29 +216,43 @@ export default function TeacherPage() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        alert("Foydalanuvchi topilmadi!");
+        toast.error("Foydalanuvchi topilmadi!");
         return;
       }
 
       let fileUrl = null;
 
       if (lessonFile) {
-        // Fayl nomini tozalash (invalid belgilarni olib tashlash)
-        const sanitizedName = lessonFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const { data, error } = await supabase.storage
+        // ✅ TO'G'RI NOMLASH VA YUKLASH
+        const cleanName = lessonFile.name
+          .replace(/[^a-zA-Z0-9._-]/g, "_")
+          .replace(/_+/g, "_")
+          .replace(/^_+|_+$/g, "");
+
+        const fileName = `${Date.now()}_${cleanName}`;
+        const filePath = `lessons/${fileName}`;
+
+        const { error } = await supabase.storage
           .from("lesson-files")
-          .upload(`lessons/${Date.now()}-${sanitizedName}`, lessonFile);
+          .upload(filePath, lessonFile, {
+            cacheControl: "3600",
+            upsert: false,
+          });
 
         if (error) {
-          alert("Fayl yuklashda xato: " + error.message);
+          toast.error("Fayl yuklashda xato: " + error.message);
           return;
         }
 
-        fileUrl = supabase.storage.from("lesson-files").getPublicUrl(data.path)
-          .data.publicUrl;
+        // ✅ PUBLIC URL OLISH (AGAR PUBLIC BUCKET BO'LSA)
+        const { data: publicData } = supabase.storage
+          .from("lesson-files")
+          .getPublicUrl(filePath); // ❗ BU YERDA lesson-files/ QO‘SHILMAYDI
+        fileUrl = publicData.publicUrl;
       }
 
-      const files = fileUrl ? [{ url: fileUrl }] : null;
+      // ✅ TO'G'RI JSON MA'LUMOT
+      const sourceFiles = fileUrl ? JSON.stringify([{ url: fileUrl }]) : null;
 
       const { error: insertError } = await supabase.from("lessons").insert([
         {
@@ -211,43 +261,70 @@ export default function TeacherPage() {
           title: lessonTitle,
           video_url: youtubeLink || null,
           video_file: fileUrl || null,
-          source_files: files, // 👈 SHU YER HAM
+          source_files: sourceFiles, // ✅ JSON STRING
           content: "",
         },
       ]);
 
       if (insertError) {
-        alert("Database xatosi!");
+        toast.error("Database xatosi: " + insertError.message);
         return;
       }
 
-      alert("Dars saqlandi!");
+      toast.success("Dars saqlandi!");
       setShowAddLesson(false);
       openLessons(currentCourseId);
     } catch (err) {
       console.error("Kutilmagan xato:", err);
-      alert("Server xatosi!");
+      toast.error("Server xatosi!");
     }
   };
 
   const downloadFile = async (url) => {
     try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Failed to fetch file");
+      const cleanUrl = url.replace(/[{}"]/g, "");
+
+      const response = await fetch(cleanUrl);
+
+      if (!response.ok) {
+        const fullUrl = new URL(cleanUrl);
+        const path = fullUrl.pathname;
+        const key = path.split("/lesson-files/")[1];
+
+        const { data: signedData, error: signedError } = await supabase.storage
+          .from("lesson-files")
+          .createSignedUrl(key, 60 * 60);
+
+        if (signedError) {
+          throw new Error(signedError.message);
+        }
+
+        const signedResponse = await fetch(signedData.signedUrl);
+        const blob = await signedResponse.blob();
+
+        const blobUrl = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = formatFileName(cleanUrl); // ✅ FIX
+        link.click();
+
+        URL.revokeObjectURL(blobUrl);
+        return;
+      }
+
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
+
       const link = document.createElement("a");
       link.href = blobUrl;
-      const rawFilename = url.split("/").pop().split("?")[0];
-      const cleanFilename = rawFilename
-        .replace(/^\d+-/, "")
-        .replace(/[^a-zA-Z0-9._-]/g, "");
-      link.download = cleanFilename || "download";
+      link.download = formatFileName(cleanUrl); // ✅ FIX
       link.click();
+
       URL.revokeObjectURL(blobUrl);
     } catch (err) {
-      console.error("Download error:", err);
-      alert("Yuklab bo'lmadi");
+      console.error(err);
+      toast.error("Faylni ochib bo'lmadi: " + err.message);
     }
   };
 
@@ -266,7 +343,7 @@ export default function TeacherPage() {
       .eq("id", editCourse.id);
 
     if (error) {
-      alert("Xatolik yuz berdi!");
+      toast.error("Xatolik yuz berdi!");
       setSaving(false); // 🔥 xatoda ham to‘xtaydi
       return;
     }
@@ -283,7 +360,7 @@ export default function TeacherPage() {
     setSaving(false); // 🔥 tugadi
     setShowEditCourse(false);
 
-    alert("✅ Kurs yangilandi!");
+    toast.success("Kurs yangilandi!");
   };
 
   // Pie chart
@@ -337,11 +414,7 @@ export default function TeacherPage() {
 
             <div className="menu-divider" />
 
-            <span
-              onClick={() => navigate("/teacher/groups")}
-            >
-              Guruhlar
-            </span>
+            <span onClick={() => navigate("/teacher/groups")}>Guruhlar</span>
           </nav>
 
           <button className="logout-btn" onClick={() => setShowLogout(true)}>
@@ -375,36 +448,33 @@ export default function TeacherPage() {
 
                   {/* RIGHT (PIE CHART) */}
                   <div className="chart-box">
-                    <ResponsiveContainer
-                      width="80%"
-                      height={260}
-                    >
-                    <PieChart>
-                      <Pie
-                        data={activityData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={70}
-                        outerRadius={100}
-                        label={({ percent }) =>
-                          percent ? `${(percent * 100).toFixed(0)}%` : ""
-                        }
-                      >
-                        {activityData.map((_, i) => (
-                          <Cell key={i} fill={COLORS[i]} />
-                        ))}
-                      </Pie>
+                    <ResponsiveContainer width="80%" height={260}>
+                      <PieChart>
+                        <Pie
+                          data={activityData}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={70}
+                          outerRadius={100}
+                          label={({ percent }) =>
+                            percent ? `${(percent * 100).toFixed(0)}%` : ""
+                          }
+                        >
+                          {activityData.map((_, i) => (
+                            <Cell key={i} fill={COLORS[i]} />
+                          ))}
+                        </Pie>
 
-                      <Tooltip
-                        formatter={(value, name) => {
-                          const total = studentsCount + courses.length || 1;
-                          const percent = ((value / total) * 100).toFixed(1);
-                          return [`${value} ta (${percent}%)`, name];
-                        }}
-                      />
-                    </PieChart>
+                        <Tooltip
+                          formatter={(value, name) => {
+                            const total = studentsCount + courses.length || 1;
+                            const percent = ((value / total) * 100).toFixed(1);
+                            return [`${value} ta (${percent}%)`, name];
+                          }}
+                        />
+                      </PieChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
@@ -516,13 +586,17 @@ export default function TeacherPage() {
                       transition: "background 0.2s",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                      e.currentTarget.style.background =
+                        "rgba(255,255,255,0.05)";
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = "transparent";
                     }}
                   >
-                    <div onClick={() => setActiveLesson(lesson)} style={{ flex: 1 }}>
+                    <div
+                      onClick={() => setActiveLesson(lesson)}
+                      style={{ flex: 1 }}
+                    >
                       {index + 1}. {lesson.title}
                     </div>
                     <button
@@ -544,10 +618,12 @@ export default function TeacherPage() {
                         flexShrink: 0,
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "rgba(239, 68, 68, 0.25)";
+                        e.currentTarget.style.background =
+                          "rgba(239, 68, 68, 0.25)";
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "rgba(239, 68, 68, 0.15)";
+                        e.currentTarget.style.background =
+                          "rgba(239, 68, 68, 0.15)";
                       }}
                     >
                       🗑️ O'chirish
@@ -599,17 +675,6 @@ export default function TeacherPage() {
                       </div>
                     )}
 
-                    {/* {activeLesson.video_file && (
-                  <div style={{ marginTop: "10px" }}>
-                    <p>📹 Yuklangan Video:</p>
-                    <video
-                      src={activeLesson.video_file}
-                      controls
-                      style={{ width: "100%", maxWidth: "500px" }}
-                    />
-                  </div>
-                )} */}
-
                     {/* SOURCE FILES */}
                     {activeLesson.source_files &&
                       (() => {
@@ -629,24 +694,36 @@ export default function TeacherPage() {
                         return (
                           <div style={{ marginTop: "10px" }}>
                             <p>📎 Materiallar:</p>
-                            {files.map((file, i) => (
-                              <a
-                                key={i}
-                                href="#"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  downloadFile(file.url || file);
-                                }}
-                                style={{
-                                  display: "block",
-                                  color: "#60a5fa",
-                                  marginBottom: "5px",
-                                  cursor: "pointer",
-                                }}
-                              >
-                                {(file.url || file).split("/").pop()}
-                              </a>
-                            ))}
+                            {files.map((file, i) => {
+                              const fileUrl =
+                                typeof file === "string" ? file : file.url;
+
+                              // 🔥 TO'G'RI URL TOZALASH
+                              const cleanUrl = fileUrl
+                                .replace(/url:/g, "") // "url:" prefiksini olib tashlash
+                                .replace(/[{}"]/g, "") // boshqa belgilarni tozalash
+                                .trim();
+
+                              return (
+                                <a
+                                  key={i}
+                                  href="#"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    downloadFile(cleanUrl);
+                                  }}
+                                  style={{
+                                    display: "block",
+                                    color: "#60a5fa",
+                                    marginBottom: "5px",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  {formatFileName(cleanUrl)}{" "}
+                                  {/* 🔥 FIX SHU YERDA */}
+                                </a>
+                              );
+                            })}
                           </div>
                         );
                       })()}
@@ -735,10 +812,14 @@ export default function TeacherPage() {
                 <div className="title-icon">➕</div>
                 <div>
                   <h3 className="modal-title">Yangi dars qo‘shish</h3>
-                  <p className="modal-subtitle">Kurs: {courses.find(c => c.id === currentCourseId)?.title || 'Noma\'lum'}</p>
+                  <p className="modal-subtitle">
+                    Kurs:{" "}
+                    {courses.find((c) => c.id === currentCourseId)?.title ||
+                      "Noma'lum"}
+                  </p>
                 </div>
               </div>
-              <button 
+              <button
                 className="close-modal-btn"
                 onClick={() => setShowAddLesson(false)}
                 title="Yopish"
@@ -788,15 +869,22 @@ export default function TeacherPage() {
                     id="lessonFileInput"
                     onChange={(e) => setLessonFile(e.target.files[0])}
                   />
-                  <label htmlFor="lessonFileInput" className="file-upload-label">
+                  <label
+                    htmlFor="lessonFileInput"
+                    className="file-upload-label"
+                  >
                     <span className="file-icon">📁</span>
                     <span className="file-text">Faylni tanlang</span>
-                    <span className="file-hint">PDF, PPTX, DOCX, XLSX yoki video</span>
+                    <span className="file-hint">
+                      PDF, PPTX, DOCX, XLSX yoki video
+                    </span>
                   </label>
                   {lessonFile && (
                     <div className="file-preview">
                       <span className="file-name">{lessonFile.name}</span>
-                      <span className="file-size">{(lessonFile.size / 1024 / 1024).toFixed(2)} MB</span>
+                      <span className="file-size">
+                        {(lessonFile.size / 1024 / 1024).toFixed(2)} MB
+                      </span>
                     </div>
                   )}
                 </div>
@@ -804,7 +892,10 @@ export default function TeacherPage() {
             </div>
 
             <div className="modal-actions">
-              <button className="btn-secondary" onClick={() => setShowAddLesson(false)}>
+              <button
+                className="btn-secondary"
+                onClick={() => setShowAddLesson(false)}
+              >
                 <span className="btn-icon">❌</span>
                 Bekor qilish
               </button>
@@ -1014,7 +1105,8 @@ export default function TeacherPage() {
           border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .btn-secondary, .btn-primary {
+        .btn-secondary,
+        .btn-primary {
           flex: 1;
           padding: 14px 20px;
           border-radius: 12px;
@@ -1075,20 +1167,21 @@ export default function TeacherPage() {
             width: 95vw;
             padding: 20px;
           }
-          
+
           .modal-title {
             font-size: 20px;
           }
-          
+
           .form-grid {
             gap: 15px;
           }
-          
+
           .modal-actions {
             flex-direction: column;
           }
-          
-          .btn-secondary, .btn-primary {
+
+          .btn-secondary,
+          .btn-primary {
             padding: 16px;
           }
         }

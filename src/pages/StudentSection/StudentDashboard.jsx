@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabase";
+import { toast } from "react-toastify";
 import StudentSettings from "../StudentSettings";
 
 export default function StudentDashboard() {
@@ -200,7 +201,7 @@ export default function StudentDashboard() {
   const downloadFile = async (url) => {
     try {
       if (!url) {
-        alert("❌ File topilmadi");
+        toast.error("File topilmadi");
         return;
       }
 
@@ -226,7 +227,7 @@ export default function StudentDashboard() {
 
     } catch (err) {
       console.error(err);
-      alert("❌ Faylni yuklashda xatolik");
+      toast.error("Faylni yuklashda xatolik");
     }
   };
   return (
@@ -419,7 +420,7 @@ export default function StudentDashboard() {
                                               source?.url || source;
 
                                             if (!fileUrl) {
-                                              alert("❌ File topilmadi");
+                                              toast.error("File topilmadi");
                                               return;
                                             }
 

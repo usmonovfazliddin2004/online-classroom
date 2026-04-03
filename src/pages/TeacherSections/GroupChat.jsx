@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../supabase";
+import { toast } from "react-toastify";
 import LocationModal from "../LocationModal";
 import "../../index.css";
 
@@ -190,7 +191,7 @@ export default function GroupChat({ isTeacher }) {
       {
         group_id: groupId,
         sender_id: userId,
-        message: `✅ Video chat tugadi. Davom etgan vaqti: ${durationText}`,
+        message: `Video chat tugadi. Davom etgan vaqti: ${durationText}`,
         message_type: "system",
       },
     ]);
@@ -326,7 +327,7 @@ export default function GroupChat({ isTeacher }) {
           }
 
           if (type === "kick") {
-            alert("Sizni o'qituvchi live chatdan chiqarib yubordi");
+            toast.error("Sizni o'qituvchi live chatdan chiqarib yubordi");
             stopVideoChat();
             return;
           }
@@ -839,19 +840,19 @@ export default function GroupChat({ isTeacher }) {
     });
 
     if (isConflict) {
-      alert("❌ Bu vaqtda boshqa dars bor!");
+      toast.error("Bu vaqtda boshqa dars bor!");
       return;
     }
     const now = new Date();
     const selected = new Date(scheduleDate);
 
     if (selected <= now) {
-      alert("❌ O'tgan vaqtni tanlab bo'lmaydi!");
+      toast.error("O'tgan vaqtni tanlab bo'lmaydi!");
       return;
     }
 
     if (!scheduleTitle || !scheduleDate) {
-      alert("Mavzu va vaqtni kiriting!");
+      toast.error("Mavzu va vaqtni kiriting!");
       return;
     }
 
@@ -870,7 +871,7 @@ export default function GroupChat({ isTeacher }) {
       .single();
 
     if (error) {
-      alert("Xatolik: " + error.message);
+      toast.error("Xatolik: " + error.message);
       return;
     }
 
@@ -896,11 +897,24 @@ export default function GroupChat({ isTeacher }) {
 
     await loadScheduledLessons();
 
-    alert("✅ Dars belgilandi!");
+    toast.success("Dars belgilandi!");
   };
 
   const deleteScheduledLesson = async (id) => {
-    if (!window.confirm("Darsni o'chirmoqchimisiz?")) return;
+    // Show custom confirm modal
+    const confirmed = await new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve(false), 5000);
+      window.showConfirm(
+        "Darsni o'chirish",
+        "Darsni o'chirmoqchimisiz?",
+        () => {
+          clearTimeout(timeout);
+          resolve(true);
+        }
+      );
+    });
+    
+    if (!confirmed) return;
 
     const { error } = await supabase
       .from("scheduled_lessons")
@@ -919,7 +933,7 @@ export default function GroupChat({ isTeacher }) {
     const selected = new Date(editDate);
 
     if (selected <= now) {
-      alert("❌ O'tgan vaqtni tanlab bo'lmaydi!");
+      toast.error("O'tgan vaqtni tanlab bo'lmaydi!");
       return;
     }
 
@@ -980,7 +994,7 @@ export default function GroupChat({ isTeacher }) {
     setShowEditModal(false);
     setEditingLesson(null);
 
-    alert("✅ Yangilandi!");
+    toast.success("Yangilandi!");
   };
 
   const isSendingLocation = useRef(false);
@@ -1049,7 +1063,7 @@ export default function GroupChat({ isTeacher }) {
 
     if (error) {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
-      alert(error.message);
+      toast.error(error.message);
       return;
     }
 
@@ -1178,14 +1192,14 @@ export default function GroupChat({ isTeacher }) {
       const videoTrack = canvasStream.getVideoTracks()[0];
       if (videoTrack) {
         combinedStream.addTrack(videoTrack);
-        console.log("✅ Video track added:", videoTrack.label);
+        console.log("Video track added:", videoTrack.label);
       }
 
       // Add audio track from microphone
       const audioTrackFromDest = dest.stream.getAudioTracks()[0];
       if (audioTrackFromDest) {
         combinedStream.addTrack(audioTrackFromDest);
-        console.log("✅ Audio track added:", audioTrackFromDest.label);
+        console.log("Audio track added:", audioTrackFromDest.label);
       }
 
       // Verify combined stream
@@ -1260,7 +1274,7 @@ export default function GroupChat({ isTeacher }) {
       };
 
       mediaRecorder.onerror = (e) => {
-        console.error("❌ MediaRecorder error:", e.error);
+        console.error("MediaRecorder error:", e.error);
       };
 
       // Start recording
@@ -1269,8 +1283,8 @@ export default function GroupChat({ isTeacher }) {
       setIsRecording(true);
 
     } catch (err) {
-      console.error("❌ Recording error:", err);
-      alert("❌ Xatolik: " + err.message);
+      console.error("Recording error:", err);
+      toast.error("Xatolik: " + err.message);
     }
   };
 
@@ -1325,8 +1339,8 @@ export default function GroupChat({ isTeacher }) {
           ]);
         }
       } catch (err) {
-        console.error("❌ Video chat error:", err);
-        alert("❌ Video chatga ulanishda xatolik: " + err.message);
+        console.error("Video chat error:", err);
+        toast.error("Video chatga ulanishda xatolik: " + err.message);
       }
     }
   };
@@ -1350,7 +1364,7 @@ export default function GroupChat({ isTeacher }) {
 
   const uploadRecording = async (title) => {
     if (recordedChunks.length === 0 || !isTeacher) {
-      alert("Teacher bo'lmaysiz yoki recording yo'q");
+      toast.error("Teacher bo'lmaysiz yoki recording yo'q");
       return;
     }
 
@@ -1362,7 +1376,7 @@ export default function GroupChat({ isTeacher }) {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) {
-        alert("❌ Siz login qilmagan bo'lishingiz kerak!");
+        toast.error("Siz login qilmagan bo'lishingiz kerak!");
         return;
       }
 
@@ -1374,11 +1388,9 @@ export default function GroupChat({ isTeacher }) {
         });
 
       if (uploadError) {
-        console.error("❌ Upload error:", uploadError);
-        alert(
-          "Storage xatosi: " +
-            uploadError.message +
-            "\n\nBucket: group-recordings\nCheck if it's PUBLIC!",
+        console.error("Upload error:", uploadError);
+        toast.error(
+          "Storage xatosi: " + uploadError.message,
         );
         return;
       }
@@ -1406,23 +1418,36 @@ export default function GroupChat({ isTeacher }) {
         .select();
 
       if (dbError) {
-        console.error("❌ Database error:", dbError);
-        alert("Database xatosi: " + dbError.message);
+        console.error("Database error:", dbError);
+        toast.error("Database xatosi: " + dbError.message);
         return;
       }
 
-      alert("✅ Recording saqlandi va havola qilindi!");
+      toast.success("Recording saqlandi va havola qilindi!");
       setRecordedChunks([]);
       setShowRecordings(true);
       await loadLessons();
     } catch (err) {
-      console.error("❌ Exception:", err);
-      alert("Xatolik: " + err.message);
+      console.error("Exception:", err);
+      toast.error("Xatolik: " + err.message);
     }
   };
 
   const deleteMessage = async (id) => {
-    if (!window.confirm("Xabarni o'chirmoqchimisiz?")) return;
+    // Show custom confirm modal
+    const confirmed = await new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve(false), 5000);
+      window.showConfirm(
+        "Xabarni o'chirish",
+        "Xabarni o'chirmoqchimisiz?",
+        () => {
+          clearTimeout(timeout);
+          resolve(true);
+        }
+      );
+    });
+    
+    if (!confirmed) return;
 
     const { error } = await supabase
       .from("group_messages")
@@ -1490,12 +1515,25 @@ export default function GroupChat({ isTeacher }) {
         videoPreviewRef.current.srcObject = currentStreamRef.current;
       }
     } catch (err) {
-      alert("❌ O'zgartirishda xatolik: " + err.message);
+      toast.error("O'zgartirishda xatolik: " + err.message);
     }
   };
 
   const deleteLesson = async (lesson) => {
-    if (!window.confirm("Darsni o'chirmoqchimisiz?")) return;
+    // Show custom confirm modal
+    const confirmed = await new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve(false), 5000);
+      window.showConfirm(
+        "Darsni o'chirish",
+        "Darsni o'chirmoqchimisiz?",
+        () => {
+          clearTimeout(timeout);
+          resolve(true);
+        }
+      );
+    });
+    
+    if (!confirmed) return;
 
     const fileName = lesson.file_url.split("/").pop();
 

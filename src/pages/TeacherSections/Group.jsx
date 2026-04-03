@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../supabase";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 
 export default function Groups() {
@@ -107,7 +108,7 @@ export default function Groups() {
     try {
       if (!teacherId) {
         console.error("Teacher ID not set");
-        alert("Teacher ID topilmadi");
+        toast.error("Teacher ID topilmadi");
         return;
       }
 
@@ -123,7 +124,7 @@ export default function Groups() {
       }
 
       if (!courses || courses.length === 0) {
-        alert("Bu teacher uchun kurslar topilmadi");
+        toast.error("Bu teacher uchun kurslar topilmadi");
         setAvailableStudents([]);
         return;
       }
@@ -175,19 +176,19 @@ export default function Groups() {
           `${student.first_name || ""} ${student.last_name || ""}`.trim(),
       }));
 
-      console.log("✅ Available students loaded:", uniqueStudents.length);
+      console.log("Available students loaded:", uniqueStudents.length);
       setAvailableStudents(uniqueStudents);
       setSelectedStudent("");
     } catch (err) {
-      console.error("❌ Error loading students:", err);
-      alert("Talabalarni yuklashda xatolik: " + err.message);
+      console.error("Error loading students:", err);
+      toast.error("Talabalarni yuklashda xatolik: " + err.message);
     }
   };
 
   // Add member to group
   const addMemberToGroup = async () => {
     if (!selectedStudent) {
-      alert("Talaba tanlang");
+      toast.error("Talaba tanlang");
       return;
     }
 
@@ -201,27 +202,38 @@ export default function Groups() {
 
       if (error) {
         if (error.code === "23505") {
-          alert("Bu talaba allaqachon guruhga qoshilgan");
+          toast.error("Bu talaba allaqachon guruhga qoshilgan");
         } else {
-          alert("Xatolik: " + error.message);
+          toast.error("Xatolik: " + error.message);
         }
         return;
       }
 
-      alert("✅ Talaba qoshildi!");
+      toast.success("Talaba qoshildi!");
       loadGroupMembers(selectedGroup.id);
       setSelectedStudent("");
     } catch (err) {
       console.error("Error adding member:", err);
-      alert("Xatolik: " + err.message);
+      toast.error("Xatolik: " + err.message);
     }
   };
 
   // Remove member from group
   const removeMemberFromGroup = async (memberId, studentName) => {
-    if (!window.confirm(`"${studentName}" ni guruhdan chiqarmoqchimisiz?`)) {
-      return;
-    }
+    // Show custom confirm modal
+    const confirmed = await new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve(false), 5000);
+      window.showConfirm(
+        "Talabani chiqarish",
+        `"${studentName}" ni guruhdan chiqarmoqchimisiz?`,
+        () => {
+          clearTimeout(timeout);
+          resolve(true);
+        }
+      );
+    });
+    
+    if (!confirmed) return;
 
     try {
       const { error } = await supabase
@@ -231,17 +243,17 @@ export default function Groups() {
 
       if (error) throw error;
 
-      alert("✅ Talaba chiqarildi!");
+      toast.success("Talaba chiqarildi!");
       loadGroupMembers(selectedGroup.id);
     } catch (err) {
       console.error("Error removing member:", err);
-      alert("Xatolik: " + err.message);
+      toast.error("Xatolik: " + err.message);
     }
   };
 
   const createGroup = async () => {
     if (!groupName.trim()) {
-      alert("❌ Guruh nomini kiriting");
+      toast.error("Guruh nomini kiriting");
       return;
     }
 
@@ -255,29 +267,36 @@ export default function Groups() {
       ]);
 
       if (error) {
-        alert("❌ Guruh yaratishda xatolik: " + error.message);
+        toast.error("Guruh yaratishda xatolik: " + error.message);
         return;
       }
 
-      alert("✅ Guruh yaratildi!");
+      toast.success("Guruh yaratildi!");
       setGroupName("");
       setGroupDesc("");
       setShowAddGroup(false);
       loadGroups();
     } catch (err) {
       console.error("Error creating group:", err);
-      alert("❌ Xatolik: " + err.message);
+      toast.error("Xatolik: " + err.message);
     }
   };
 
   const deleteGroup = async (groupId, groupName) => {
-    if (
-      !window.confirm(
+    // Show custom confirm modal
+    const confirmed = await new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve(false), 5000);
+      window.showConfirm(
+        "Guruhni o'chirish",
         `"${groupName}" guruhini o'chirishga ishonchingiz komilmi?`,
-      )
-    ) {
-      return;
-    }
+        () => {
+          clearTimeout(timeout);
+          resolve(true);
+        }
+      );
+    });
+    
+    if (!confirmed) return;
 
     try {
       const { error } = await supabase
@@ -286,15 +305,15 @@ export default function Groups() {
         .eq("id", groupId);
 
       if (error) {
-        alert("❌ Guruhni o'chirishda xatolik: " + error.message);
+        toast.error("Guruhni o'chirishda xatolik: " + error.message);
         return;
       }
 
-      alert("✅ Guruh o'chirildi!");
+      toast.success("Guruh o'chirildi!");
       loadGroups();
     } catch (err) {
       console.error("Error deleting group:", err);
-      alert("❌ Xatolik: " + err.message);
+      toast.error("Xatolik: " + err.message);
     }
   };
 
@@ -334,7 +353,7 @@ export default function Groups() {
 
       {showAddGroup && (
         <div style={styles.addGroupForm}>
-          <h3>Guruh yaratish</h3>
+          <h3 style={{marginBottom: "10px"}}>Guruh yaratish</h3>
           <input
             type="text"
             placeholder="Guruh nomi"
@@ -587,6 +606,7 @@ const styles = {
     color: "#fff",
     fontSize: "14px",
     minHeight: "80px",
+    maxHeight: "140px",
     resize: "vertical",
     boxSizing: "border-box",
   },

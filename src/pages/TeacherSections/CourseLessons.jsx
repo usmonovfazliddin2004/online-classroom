@@ -34,7 +34,7 @@ export default function CreateLesson() {
           .upload(videoPath, videoFile);
 
         if (error) throw error;
-        toast.success("✅ Dars muvaffaqiyatli saqlandi!");
+        toast.success("Dars muvaffaqiyatli saqlandi!");
 
         videoFileUrl = supabase.storage
           .from("lesson-files")
@@ -87,7 +87,7 @@ export default function CreateLesson() {
       navigate("/teacher"); // yoki navigate(-1)
     } catch (err) {
       console.error("SAQLASH XATOSI:", err);
-      toast.error("❌ Dars saqlanmadi!");
+      toast.error("Dars saqlanmadi!");
     } finally {
       setLoading(false);
     }

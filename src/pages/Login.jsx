@@ -8,6 +8,7 @@ export default function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
@@ -24,11 +25,10 @@ export default function Login() {
     }
 
     // ✅ 1. SUPABASE AUTH LOGIN
-    const { data, error: authError } =
-      await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
     if (authError) {
       setError("Email yoki parol noto‘g‘ri");
@@ -38,12 +38,11 @@ export default function Login() {
     const userId = data.user.id;
 
     // ✅ 2. USERS TABLE DAN ROLE OLISH
-    const { data: userData, error: userError } =
-      await supabase
-        .from("users")
-        .select("role")
-        .eq("id", userId)
-        .single();
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", userId)
+      .single();
 
     if (userError) {
       setError("Foydalanuvchi roli topilmadi");
@@ -75,18 +74,32 @@ export default function Login() {
           onChange={(e) => setEmail(e.target.value)}
         />
 
-        <input
-          type="password"
-          placeholder="Parol"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <div className="password-input-wrapper">
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Parol"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
-        <button type="submit">Kirish</button>
+          <button
+            type="button"
+            className="password-toggle-btn"
+            onClick={() => setShowPassword(!showPassword)}
+          >
+            <i
+              className={`fa-solid ${showPassword ? "fa-eye-slash" : "fa-eye"}`}
+            ></i>
+          </button>
+        </div>
+
+        <button type="submit" className="main-btn">
+          Kirish
+        </button>
 
         <span className="hint">
-          Hisobingiz yo'qmi?{" "}
-          <Link to="/signup">Ro'yxatdan o'ting</Link>
+          {" "}
+          Hisobingiz yo'qmi? <Link to="/signup">Ro'yxatdan o'ting</Link>{" "}
         </span>
       </form>
     </div>

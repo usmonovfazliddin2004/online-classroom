@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabase";
+import { toast } from "react-toastify";
 
 export default function CreateCourse() {
   const [showToast, setShowToast] = useState(false);
@@ -18,7 +19,7 @@ const handleSubmit = async (e) => {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    alert("Avval login qiling");
+    toast.error("Avval login qiling");
     return;
   }
 
@@ -34,7 +35,7 @@ const handleSubmit = async (e) => {
 
   if (error) {
     console.error(error);
-    alert("Kurs saqlanmadi");
+    toast.error("Kurs saqlanmadi");
     return;
   }
 

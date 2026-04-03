@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "react-toastify";
 import {
   MapContainer,
   TileLayer,
@@ -156,13 +157,13 @@ export default function LocationModal({ onClose, onSend }) {
             lng: parseFloat(fallback.lon),
           });
 
-          alert("❗ Aniq joy topilmadi, yaqin hudud ko‘rsatildi. Pin qo‘ying.");
+          toast.warning("❗ Aniq joy topilmadi, yaqin hudud ko'rsatildi. Pin qo'ying.");
         } else {
-          alert("❌ Joy topilmadi, mapdan belgilang");
+          toast.error("Joy topilmadi, mapdan belgilang");
         }
       }
     } catch (err) {
-      alert("Search error: " + err.message);
+      toast.error("Search error: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -209,7 +210,7 @@ export default function LocationModal({ onClose, onSend }) {
           <button
             onClick={() => {
               if (!position) {
-                alert("❗ Avval joy tanlang");
+                toast.warning("❗ Avval joy tanlang");
                 return;
               }
               onSend(position);

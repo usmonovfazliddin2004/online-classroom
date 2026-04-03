@@ -32,7 +32,7 @@ export default function StudentGroups() {
 
 
       if (membershipError) {
-        console.error("❌ Membership fetch error:", membershipError);
+        console.error("Membership fetch error:", membershipError);
         setGroups([]);
         return;
       }
@@ -53,7 +53,7 @@ export default function StudentGroups() {
 
 
       if (groupsError) {
-        console.error("❌ Groups fetch error:", groupsError);
+        console.error("Groups fetch error:", groupsError);
         setGroups([]);
         return;
       }
@@ -73,7 +73,7 @@ export default function StudentGroups() {
 
 
       if (teachersError) {
-        console.error("❌ Teachers fetch error:", teachersError);
+        console.error("Teachers fetch error:", teachersError);
         setGroups(groupsData || []);
         return;
       }
@@ -89,7 +89,7 @@ export default function StudentGroups() {
 
       setGroups(groupsWithTeachers);
     } catch (err) {
-      console.error("❌ Error loading groups:", err);
+      console.error("Error loading groups:", err);
       setGroups([]);
     } finally {
       setLoading(false);
@@ -112,7 +112,7 @@ export default function StudentGroups() {
         .eq("group_id", groupId);
 
       if (memberError) {
-        console.error("❌ Members error:", memberError);
+        console.error("Members error:", memberError);
         return;
       }
 
@@ -132,7 +132,7 @@ export default function StudentGroups() {
 
 
       if (usersError) {
-        console.error("❌ Users fetch error:", usersError);
+        console.error("Users fetch error:", usersError);
         return;
       }
 
@@ -151,7 +151,7 @@ export default function StudentGroups() {
 
       setGroupMembers(membersWithUsers);
     } catch (err) {
-      console.error("❌ Error loading members:", err);
+      console.error("Error loading members:", err);
     }
   };
 

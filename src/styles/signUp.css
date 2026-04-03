@@ -1,22 +1,47 @@
 .auth-wrapper {
   min-height: 91.9vh;
-  background: linear-gradient(135deg, #1e1e2f, #2a2a40);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: "Inter", system-ui, sans-serif;
+
+  background:
+    linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.85)),
+    url("https://images.unsplash.com/photo-1522202176988-66273c2fd55f");
+
+  background-size: cover;
+  background-position: center;
+}
+.auth-wrapper {
+  position: relative;
+}
+
+.auth-wrapper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  backdrop-filter: blur(3px);
+  z-index: 0;
+}
+
+.auth-card {
+  position: relative;
+  z-index: 1;
 }
 
 .auth-card {
   width: 100%;
   max-width: 500px;
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(12px);
+  /* background: rgba(255, 255, 255, 0.06); */
+  /* backdrop-filter: blur(12px); */
   padding: 32px;
   border-radius: 18px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
   color: #fff;
   text-align: center;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .auth-card h2 {
@@ -37,9 +62,12 @@
   margin-bottom: 14px;
   border-radius: 10px;
   border: none;
-  background: rgba(255, 255, 255, 0.15);
+  /* background: rgba(255, 255, 255, 0.15); */
   color: #fff;
   font-size: 14px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.2s ease;
 }
 
 .auth-card input::placeholder {
@@ -53,7 +81,10 @@
 
 .auth-card input:focus,
 .auth-card select:focus {
-  outline: 2px solid #4caf50;
+  /* outline: 2px solid #4caf50; */
+  outline: none;
+  border: 1px solid #4caf50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
 }
 
 .auth-card button {
@@ -68,10 +99,14 @@
   cursor: pointer;
   transition: background 0.2s;
   margin-top: 6px;
+  background: linear-gradient(135deg, #4caf50, #2ecc71);
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
 }
 
 .auth-card button:hover {
   background: #43a047;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px rgba(76, 175, 80, 0.6);
 }
 
 .hint {
@@ -179,6 +214,8 @@
   color: #fff !important;
   font-size: 14px;
   padding-left: 54px !important;
+  border: 1px solid #4caf50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
 }
 
 /* FLAG BUTTON */
@@ -214,7 +251,7 @@
 .phone-dropdown .search {
   padding: 10px !important;
   background: #1e1e2f !important;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* ===== SEARCH INPUT ===== */
@@ -225,7 +262,7 @@
   border-radius: 8px !important;
   border: none !important;
   outline: none !important;
-  background: rgba(255,255,255,0.15) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
   color: white !important;
 }
 
@@ -277,7 +314,6 @@
   border-radius: 2px;
 }
 
-
 /* COUNTRY ITEM */
 .phone-dropdown .country {
   display: flex;
@@ -320,7 +356,6 @@
   padding: 0 14px;
 }
 
-
 /* ===============================
    PHONE INPUT – FINAL ABSOLUTE FIX
 ================================ */
@@ -337,7 +372,7 @@
   width: 100% !important;
   height: 44px !important;
   padding-left: 40px !important;
-  background: rgba(255,255,255,0.15) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
   color: #fff !important;
   border: none !important;
   border-radius: 12px !important;
@@ -377,15 +412,14 @@
 
 /* SEARCH INPUT */
 .phone-container .country-list .search input {
-  background: rgba(255,255,255,0.15) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
   color: #fff !important;
   border: none !important;
 }
 
-
 /* SEARCH INPUT */
 .phone-container .country-list .search input {
-  background: rgba(255,255,255,0.15) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
   color: #fff !important;
   border-radius: 8px !important;
   border: none !important;
@@ -408,7 +442,20 @@
 
 /* HOVER */
 .phone-container .country:hover {
-  background: rgba(76,175,80,0.25) !important;
+  background: rgba(76, 175, 80, 0.25) !important;
 }
 
+.auth-card {
+  animation: fadeIn 0.4s ease;
+}
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -65,7 +65,7 @@ export default function StudentSettings() {
         });
 
       if (uploadError || !data) {
-        toast.error("❌ Rasm yuklanmadi");
+        toast.error("Rasm yuklanmadi");
         setSaving(false);
         return;
       }
@@ -77,7 +77,7 @@ export default function StudentSettings() {
       avatarUrl = publicUrlData.publicUrl;
 
       if (!avatarUrl) {
-        toast.error("❌ URL olinmadi");
+        toast.error("URL olinmadi");
         setSaving(false);
         return;
       }
@@ -114,12 +114,12 @@ export default function StudentSettings() {
       .eq("id", user.id);
 
     if (error) {
-      toast.error(`❌ Saqlashda xatolik: ${error.message}`);
+      toast.error(`Saqlashda xatolik: ${error.message}`);
       setSaving(false);
       return;
     }
 
-    toast.success("✅ Sozlamalar saqlandi");
+    toast.success("Sozlamalar saqlandi");
 
     setAvatar(null);
 

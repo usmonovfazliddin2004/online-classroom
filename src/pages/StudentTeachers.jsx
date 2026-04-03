@@ -32,7 +32,7 @@ const sendRequest = async (course) => {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    setToast({ message: "Login qilinmagan ❌", type: "error" });
+    setToast({ message: "Login qilinmagan", type: "error" });
     setTimeout(() => setToast(null), 3000);
     return;
   }
@@ -46,7 +46,7 @@ const sendRequest = async (course) => {
 
   if (checkError) {
     console.error(checkError);
-    setToast({ message: "Tekshirishda xatolik ❌", type: "error" });
+    setToast({ message: "Tekshirishda xatolik", type: "error" });
     setTimeout(() => setToast(null), 3000);
     return;
   }
@@ -73,10 +73,10 @@ const sendRequest = async (course) => {
 
   if (error) {
     console.error(error);
-    setToast({ message: "Xatolik ❌", type: "error" });
+    setToast({ message: "Xatolik", type: "error" });
     setTimeout(() => setToast(null), 3000);
   } else {
-    setToast({ message: "So'rov yuborildi ✅", type: "success" });
+    setToast({ message: "So'rov yuborildi", type: "success" });
     setTimeout(() => setToast(null), 3000);
   }
 };
