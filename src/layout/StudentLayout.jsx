@@ -1,4 +1,4 @@
-import { Link, Outlet } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 
 export default function StudentLayout() {
   return (
@@ -9,20 +9,43 @@ export default function StudentLayout() {
 
         <ul style={styles.menu}>
           <li>
-            <Link to="/student/dashboard" style={styles.link}>
-              🏠 Bosh sahifa
-            </Link>
+            <NavLink
+              to="/student/dashboard"
+              style={({ isActive }) => ({
+                ...styles.link,
+                ...(isActive ? styles.activeLink : {}),
+              })}
+            >
+              <i className="fas fa-home"></i>
+              Bosh sahifa
+            </NavLink>
           </li>
 
           <li>
-            <Link to="/student" style={styles.link}>
-              👨‍🏫 O'qituvchilar
-            </Link>
+            <NavLink
+              to="/student"
+              end
+              style={({ isActive }) => ({
+                ...styles.link,
+                ...(isActive ? styles.activeLink : {}),
+              })}
+            >
+              <i className="fas fa-chalkboard-teacher"></i>
+              O‘qituvchilar
+            </NavLink>
           </li>
+
           <li>
-            <Link to="/student/groups" style={styles.link}>
-              👥 Guruhlarim
-            </Link>
+            <NavLink
+              to="/student/groups"
+              style={({ isActive }) => ({
+                ...styles.link,
+                ...(isActive ? styles.activeLink : {}),
+              })}
+            >
+              <i className="fas fa-users"></i>
+              Guruhlarim
+            </NavLink>
           </li>
         </ul>
       </aside>
@@ -35,33 +58,58 @@ export default function StudentLayout() {
   );
 }
 
-/* ===== STYLES ===== */
 const styles = {
   page: {
     display: "flex",
-    minHeight: "100vh",
-    background: "#1e1e2f",
+    background: "linear-gradient(135deg, #020617, #0f172a)",
     color: "#fff",
+    minHeight: "100dvh",
   },
+
   sidebar: {
-    width: "240px",
-    background: "#2a2a40",
-    padding: "20px",
+    width: "250px",
+    background: "rgba(255,255,255,0.05)",
+    backdropFilter: "blur(15px)",
+    borderRight: "1px solid rgba(255,255,255,0.1)",
+    padding: "25px 20px",
+    display: "flex",
+    flexDirection: "column",
   },
+
   logo: {
-    marginBottom: "30px",
+    marginBottom: "40px",
+    fontSize: "20px",
+    fontWeight: "600",
+    letterSpacing: "0.5px",
   },
+
   menu: {
     listStyle: "none",
     padding: 0,
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
   },
+
   link: {
-    display: "block",
-    padding: "10px",
-    color: "#fff",
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    padding: "12px 14px",
+    color: "rgba(255,255,255,0.8)",
     textDecoration: "none",
-    borderRadius: "8px",
+    borderRadius: "12px",
+    transition: "all 0.25s ease",
+    fontSize: "14px",
   },
+
+  activeLink: {
+    background: "linear-gradient(135deg, #22c55e, #16a34a)",
+    color: "#000",
+    fontWeight: "600",
+    boxShadow: "0 8px 20px rgba(34,197,94,0.4)",
+  },
+
   content: {
     flex: 1,
     padding: "30px",

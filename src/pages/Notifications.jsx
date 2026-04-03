@@ -11,10 +11,12 @@ export default function Notifications() {
   const loadRequests = async (teacherId) => {
     const { data, error } = await supabase
       .from("course_requests")
-      .select(`
+      .select(
+        `
         *,
         courses(title)
-      `)
+      `,
+      )
       .eq("teacher_id", teacherId)
       .eq("status", "pending");
 
@@ -28,7 +30,7 @@ export default function Notifications() {
             .maybeSingle();
 
           return { ...r, student };
-        })
+        }),
       );
 
       setRequests(withStudents);
@@ -60,7 +62,7 @@ export default function Notifications() {
           },
           () => {
             loadRequests(user.id);
-          }
+          },
         )
         .subscribe();
     };
@@ -93,8 +95,21 @@ export default function Notifications() {
   return (
     <div style={styles.page}>
       <div style={styles.container}>
-        <button style={styles.backBtn} onClick={() => navigate("/teacher")}>
-          ← Ortga
+        <button
+          style={styles.backBtn}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-2px) scale(1.05)";
+            e.currentTarget.style.background = "rgba(255,255,255,0.2)";
+            e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.4)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0) scale(1)";
+            e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+            e.currentTarget.style.boxShadow = "none";
+          }}
+          onClick={() => navigate("/teacher")}
+        >
+          <i className="fas fa-arrow-left"></i>
         </button>
 
         <div style={styles.header}>
@@ -119,14 +134,14 @@ export default function Notifications() {
                     style={{ ...styles.btn, ...styles.accept }}
                     onClick={() => acceptRequest(r.id)}
                   >
-                    ✅ Qabul qilish
+                    <i className="fas fa-check"></i> Qabul qilish
                   </button>
 
                   <button
                     style={{ ...styles.btn, ...styles.reject }}
                     onClick={() => rejectRequest(r.id)}
                   >
-                    ❌ Rad etish
+                    <i className="fas fa-xmark"></i> Rad etish
                   </button>
                 </span>
               </div>
@@ -173,14 +188,22 @@ const styles = {
 
   backBtn: {
     position: "absolute",
-    top: "20px",
-    left: "20px",
-    background: "#334155",
-    color: "#60a5fa",
-    border: "none",
-    borderRadius: "10px",
-    padding: "8px 14px",
+    top: "20px", // 🔥 MUHIM (yuqoridan joy)
+    left: "20px", // 🔥 chapdan padding
+    width: "42px",
+    height: "42px",
+    borderRadius: "12px",
+    background: "rgba(255,255,255,0.08)",
+    backdropFilter: "blur(12px)",
+    border: "1px solid rgba(255,255,255,0.15)",
+    color: "white",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
     cursor: "pointer",
+    transition: "all 0.25s ease",
+    fontSize: "16px",
+    zIndex: 10, // 🔥 ustida chiqadi
   },
 
   list: {

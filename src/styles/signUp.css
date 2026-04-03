@@ -1,5 +1,5 @@
 .auth-wrapper {
-  min-height: 91.9vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -11,6 +11,7 @@
 
   background-size: cover;
   background-position: center;
+  padding-bottom: 75px;
 }
 .auth-wrapper {
   position: relative;

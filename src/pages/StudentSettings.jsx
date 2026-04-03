@@ -317,6 +317,7 @@ const styles = {
     color: "#fff",
   },
 
+
   card: {
     width: "100%",
     maxWidth: "440px",

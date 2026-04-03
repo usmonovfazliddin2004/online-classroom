@@ -63,7 +63,7 @@ export default function TeacherProfile() {
 
         // 🔥 CACHE BREAKER
         setAvatarUrl(
-          data.avatar_url ? data.avatar_url + "?t=" + Date.now() : ""
+          data.avatar_url ? data.avatar_url + "?t=" + Date.now() : "",
         );
 
         if (data.phone) {
@@ -115,7 +115,7 @@ export default function TeacherProfile() {
 
       if (phoneNumber?.metadata?.nationalNumberLengths) {
         const maxLength = Math.max(
-          ...phoneNumber.metadata.nationalNumberLengths
+          ...phoneNumber.metadata.nationalNumberLengths,
         );
 
         if (phoneNumber.nationalNumber.length > maxLength) {
@@ -209,13 +209,27 @@ export default function TeacherProfile() {
 
   return (
     <div style={styles.wrapper}>
-      <button style={styles.backBtn} onClick={() => navigate("/teacher")}>
-        ← Orqaga
-      </button>
-
       <div style={styles.card}>
-        <h1 style={styles.title}>👤 Profil sozlamalari</h1>
+        <div style={styles.header}>
+          <button
+            style={styles.backBtn}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-2px) scale(1.05)";
+              e.currentTarget.style.background = "rgba(255,255,255,0.2)";
+              e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.4)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0) scale(1)";
+              e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+              e.currentTarget.style.boxShadow = "none";
+            }}
+            onClick={() => navigate("/teacher")}
+          >
+            <i className="fas fa-arrow-left"></i>
+          </button>
 
+          <h1 style={styles.title}>Profil sozlamalari</h1>
+        </div>
         <div style={styles.avatarWrapper}>
           <label style={styles.avatarLabel}>
             {avatarUrl ? (
@@ -316,20 +330,34 @@ const styles = {
     fontFamily: "Inter, sans-serif",
   },
 
+  header: {
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: "25px",
+  },
+
   backBtn: {
     position: "absolute",
-    top: 24,
-    left: 24,
-    background: "transparent",
-    border: "1px solid #334155",
-    color: "#93c5fd",
-    padding: "10px 16px",
-    borderRadius: 999,
+    left: "0",
+    width: "42px",
+    height: "42px",
+    borderRadius: "12px",
+    background: "rgba(255,255,255,0.08)",
+    backdropFilter: "blur(12px)",
+    border: "1px solid rgba(255,255,255,0.15)",
+    color: "white",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
     cursor: "pointer",
+    transition: "all 0.25s ease",
+    fontSize: "16px",
   },
 
   card: {
-    width: 420,
+    width: 500,
     padding: 32,
     borderRadius: 24,
     background: "rgba(15,23,42,0.9)",
@@ -339,8 +367,10 @@ const styles = {
 
   title: {
     color: "#fff",
-    marginBottom: 24,
+    marginBottom: 0,
     textAlign: "center",
+    fontSize: "26px",
+    fontWeight: "600",
   },
 
   input: {
@@ -392,24 +422,24 @@ const styles = {
     borderRadius: "50%",
     objectFit: "cover",
   },
- avatarIcon: {
-  width: 100,
-  height: 100,
-  borderRadius: "50%",
-  background: "linear-gradient(135deg, #1e3a8a, #6d28d9)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: 64,
-  color: "#e5e7eb",
-  boxShadow: "0 0 25px rgba(99,102,241,0.4)",
+  avatarIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: "50%",
+    background: "linear-gradient(135deg, #1e3a8a, #6d28d9)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 64,
+    color: "#e5e7eb",
+    boxShadow: "0 0 25px rgba(99,102,241,0.4)",
   },
   avatarHint: {
     display: "block",
     marginTop: 8,
     fontSize: 14,
     color: "#2563eb",
-    marginBottom: 12
+    marginBottom: 12,
   },
 
   phoneWrapper: {
