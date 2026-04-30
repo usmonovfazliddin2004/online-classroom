@@ -47,6 +47,19 @@ export default function StudentLayout() {
               Guruhlarim
             </NavLink>
           </li>
+
+          <li>
+            <NavLink
+              to="/student/notifications"
+              style={({ isActive }) => ({
+                ...styles.link,
+                ...(isActive ? styles.activeLink : {}),
+              })}
+            >
+              <i className="fas fa-bell"></i>
+              Bildirishnomalar
+            </NavLink>
+          </li>
         </ul>
       </aside>
 

@@ -252,7 +252,8 @@ export default function TeacherPage() {
       }
 
       // ✅ TO'G'RI JSON MA'LUMOT
-      const sourceFiles = fileUrl ? JSON.stringify([{ url: fileUrl }]) : null;
+      // ✅ TO'G'RI FORMATI
+      const sourceFiles = fileUrl ? [{ url: fileUrl }] : null;
 
       const { error: insertError } = await supabase.from("lessons").insert([
         {
@@ -261,7 +262,7 @@ export default function TeacherPage() {
           title: lessonTitle,
           video_url: youtubeLink || null,
           video_file: fileUrl || null,
-          source_files: sourceFiles, // ✅ JSON STRING
+          source_files: sourceFiles, // ✅ Array sifatida
           content: "",
         },
       ]);
@@ -282,35 +283,40 @@ export default function TeacherPage() {
 
   const downloadFile = async (url) => {
     try {
-      const cleanUrl = url.replace(/[{}"]/g, "");
+      // URL-da "url://" bo'lsa, o'chirish
+      let cleanUrl = url.replace(/url:/g, "").replace(/[{}"]/g, "").trim();
 
-      const response = await fetch(cleanUrl);
+      console.log("🔍 Clean URL:", cleanUrl);
+
+      // ✅ Agar URL https:// bilan boshlanmasa, qo'shish
+      if (!cleanUrl.startsWith("http")) {
+        cleanUrl = "https://" + cleanUrl;
+      }
+
+      console.log("📥 Download URL:", cleanUrl);
+
+      // ✅ CORS bilan fetch
+      const response = await fetch(cleanUrl, {
+        mode: "cors",
+        credentials: "omit", // Public URL uchun kerak
+      });
+
+      console.log("📊 Response status:", response.status);
+
+      if (response.status === 404) {
+        toast.error("❌ Fayl topilmadi!");
+        return;
+      }
+
+      if (response.status === 403) {
+        toast.error(
+          "❌ Bu faylga ruxsat yo'q. Supabase bucket sozlamalarini tekshiring!",
+        );
+        return;
+      }
 
       if (!response.ok) {
-        const fullUrl = new URL(cleanUrl);
-        const path = fullUrl.pathname;
-        const key = path.split("/lesson-files/")[1];
-
-        const { data: signedData, error: signedError } = await supabase.storage
-          .from("lesson-files")
-          .createSignedUrl(key, 60 * 60);
-
-        if (signedError) {
-          throw new Error(signedError.message);
-        }
-
-        const signedResponse = await fetch(signedData.signedUrl);
-        const blob = await signedResponse.blob();
-
-        const blobUrl = URL.createObjectURL(blob);
-
-        const link = document.createElement("a");
-        link.href = blobUrl;
-        link.download = formatFileName(cleanUrl); // ✅ FIX
-        link.click();
-
-        URL.revokeObjectURL(blobUrl);
-        return;
+        throw new Error(`HTTP ${response.status}`);
       }
 
       const blob = await response.blob();
@@ -318,13 +324,16 @@ export default function TeacherPage() {
 
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = formatFileName(cleanUrl); // ✅ FIX
+      link.download = formatFileName(cleanUrl);
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
 
       URL.revokeObjectURL(blobUrl);
+      toast.success("✅ Fayl yuklab olindi!");
     } catch (err) {
-      console.error(err);
-      toast.error("Faylni ochib bo'lmadi: " + err.message);
+      console.error("❌ Download xatosi:", err);
+      toast.error(`Xatolik: ${err.message}`);
     }
   };
 
@@ -413,9 +422,13 @@ export default function TeacherPage() {
             </span>
 
             <div className="menu-divider" />
-
             <span onClick={() => navigate("/teacher/groups")}>Guruhlar</span>
+
+            <div className="menu-divider" />
+            <span onClick={() => navigate("/teacher/online-quiz")}>Quzi test</span>
           </nav>
+
+          
 
           <button className="logout-btn" onClick={() => setShowLogout(true)}>
             Chiqish
@@ -698,10 +711,12 @@ export default function TeacherPage() {
                               const fileUrl =
                                 typeof file === "string" ? file : file.url;
 
-                              // 🔥 TO'G'RI URL TOZALASH
+                              // ✅ URL TEKSHIRISH
+                              if (!fileUrl) return null;
+
                               const cleanUrl = fileUrl
-                                .replace(/url:/g, "") // "url:" prefiksini olib tashlash
-                                .replace(/[{}"]/g, "") // boshqa belgilarni tozalash
+                                .replace(/url:/g, "")
+                                .replace(/[{}"]/g, "")
                                 .trim();
 
                               return (
@@ -717,10 +732,18 @@ export default function TeacherPage() {
                                     color: "#60a5fa",
                                     marginBottom: "5px",
                                     cursor: "pointer",
+                                    textDecoration: "none",
+                                    transition: "color 0.2s",
                                   }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = "#7dd3fc";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.color = "#60a5fa";
+                                  }}
+                                  title="Faylni yuklash"
                                 >
-                                  {formatFileName(cleanUrl)}{" "}
-                                  {/* 🔥 FIX SHU YERDA */}
+                                  📥 {formatFileName(cleanUrl)}
                                 </a>
                               );
                             })}

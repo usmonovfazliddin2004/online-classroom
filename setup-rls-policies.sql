@@ -62,3 +62,72 @@ CREATE POLICY "Group members can view messages" ON group_messages
       AND groups.teacher_id = auth.uid()
     )
   );
+
+-- Enable RLS on quizzes table
+ALTER TABLE quizzes ENABLE ROW LEVEL SECURITY;
+
+-- Policy 1: Teachers can view their own quizzes
+CREATE POLICY "Teachers can view own quizzes" ON quizzes
+  FOR SELECT
+  USING (auth.uid() = teacher_id);
+
+-- Policy 2: Students can view quizzes assigned to them
+CREATE POLICY "Students can view assigned quizzes" ON quizzes
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM quiz_assignments
+      WHERE quiz_assignments.quiz_id = quizzes.id
+      AND quiz_assignments.student_id = auth.uid()
+    )
+  );
+
+-- Policy 3: Teachers can create quizzes
+CREATE POLICY "Teachers can create quizzes" ON quizzes
+  FOR INSERT
+  WITH CHECK (auth.uid() = teacher_id);
+
+-- Policy 4: Teachers can update their own quizzes
+CREATE POLICY "Teachers can update own quizzes" ON quizzes
+  FOR UPDATE
+  USING (auth.uid() = teacher_id);
+
+-- Policy 5: Teachers can delete their own quizzes
+CREATE POLICY "Teachers can delete own quizzes" ON quizzes
+  FOR DELETE
+  USING (auth.uid() = teacher_id);
+
+-- Enable RLS on quiz_assignments table
+ALTER TABLE quiz_assignments ENABLE ROW LEVEL SECURITY;
+
+-- Policy 1: Students can view their own assignments
+CREATE POLICY "Students can view own quiz assignments" ON quiz_assignments
+  FOR SELECT
+  USING (auth.uid() = student_id);
+
+-- Policy 2: Teachers can view assignments for their quizzes
+CREATE POLICY "Teachers can view quiz assignments" ON quiz_assignments
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM quizzes
+      WHERE quizzes.id = quiz_assignments.quiz_id
+      AND quizzes.teacher_id = auth.uid()
+    )
+  );
+
+-- Policy 3: Students can update their own assignments (for status)
+CREATE POLICY "Students can update own quiz assignments" ON quiz_assignments
+  FOR UPDATE
+  USING (auth.uid() = student_id);
+
+-- Policy 4: Teachers can update assignments
+CREATE POLICY "Teachers can update quiz assignments" ON quiz_assignments
+  FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM quizzes
+      WHERE quizzes.id = quiz_assignments.quiz_id
+      AND quizzes.teacher_id = auth.uid()
+    )
+  );

@@ -17,6 +17,8 @@ import StudentSettings from "./pages/StudentSettings";
 import StudentDashboard from "./pages/StudentSection/StudentDashboard";
 import StudentTeachers from "./pages/StudentTeachers";
 import StudentGroups from "./pages/StudentSection/StudentGroups";
+import StudentNotifications from "./pages/StudentSection/StudentNotifications";
+import TakeQuiz from "./pages/StudentSection/TakeQuiz";
 
 import TeacherPage from "./pages/TeacherPage";
 import CreateCourse from "./pages/TeacherSections/CreateCourses";
@@ -25,6 +27,8 @@ import CreateLesson from "./pages/TeacherSections/CourseLessons";
 import Notifications from "./pages/Notifications";
 import Groups from "./pages/TeacherSections/Group";
 import GroupChat from "./pages/TeacherSections/GroupChat";
+import OnlineQuizSystem from "./pages/TeacherSections/OnlineQuizSystem";
+
 
 function App() {
   const [confirmState, setConfirmState] = useState({
@@ -92,6 +96,8 @@ function App() {
         <Route path="dashboard" element={<StudentDashboard />} />
         <Route path="settings" element={<StudentSettings />} />
         <Route path="groups" element={<StudentGroups />} />
+        <Route path="notifications" element={<StudentNotifications />} />
+        <Route path="take-quiz/:quizId/:assignmentId" element={<TakeQuiz />} />
         <Route
           path="group-chat/:groupId/:groupName"
           element={<GroupChat isTeacher={false} />}
@@ -106,7 +112,7 @@ function App() {
         <Route path="profile-settings" element={<ProfileSettings />} />
         <Route path="create-lesson" element={<CreateLesson />} />
         <Route path="notifications" element={<Notifications />} />
-
+        <Route path="online-quiz" element={<OnlineQuizSystem />} />
         {/* 🔥 GROUPS */}
         <Route path="groups">
           <Route index element={<Groups />} />
