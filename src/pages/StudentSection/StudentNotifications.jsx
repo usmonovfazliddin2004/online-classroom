@@ -3,6 +3,28 @@ import { supabase } from "../../supabase";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 
+const parseJson = (value) => {
+  if (value == null) return null;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  return value;
+};
+
+const parseAnswers = (answers) => {
+  const parsed = parseJson(answers);
+  return parsed && typeof parsed === "object" ? parsed : {};
+};
+
+const parseQuestions = (questions) => {
+  const parsed = parseJson(questions);
+  return Array.isArray(parsed) ? parsed : [];
+};
+
 export default function StudentNotifications() {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +59,7 @@ export default function StudentNotifications() {
       description,
       time_limit,
       deadline,
+      questions,
       created_at
     )
   `,
@@ -51,7 +74,15 @@ export default function StudentNotifications() {
         }
 
         console.log("Fetched assignments:", data);
-        setAssignments(data || []);
+        setAssignments(
+          (data || []).map((assignment) => ({
+            ...assignment,
+            quizzes: {
+              ...assignment.quizzes,
+              questions: parseQuestions(assignment.quizzes?.questions),
+            },
+          })),
+        );
       } catch (err) {
         console.error("Error:", err);
         toast.error("Xatolik yuz berdi");
@@ -179,6 +210,35 @@ export default function StudentNotifications() {
     return new Date(deadline) < new Date();
   };
 
+  const getResultStats = (assignment) => {
+    const questions = parseQuestions(assignment.quizzes?.questions);
+    if (!assignment || questions.length === 0) return null;
+    const answers = parseAnswers(assignment.answers);
+    const total = questions.length;
+    if (!total) return null;
+
+    let correct = 0;
+    questions.forEach((question, index) => {
+      const userAnswer = answers?.[index];
+      if (question.type === "multiple") {
+        if (userAnswer === question.correctAnswer) {
+          correct += 1;
+        }
+      } else {
+        if (
+          String(userAnswer || "").trim().toLowerCase() ===
+          String(question.correctAnswer || "").trim().toLowerCase()
+        ) {
+          correct += 1;
+        }
+      }
+    });
+
+    const incorrect = total - correct;
+    const score = Math.round((correct / total) * 100);
+    return { total, correct, incorrect, score };
+  };
+
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
@@ -201,17 +261,20 @@ export default function StudentNotifications() {
         </div>
       ) : (
         <div style={styles.grid}>
-          {assignments.map((assignment) => (
-            <div key={assignment.id} style={styles.card}>
-              <div style={styles.cardHeader}>
-                <div style={styles.cardTitle}>
-                  <span style={styles.testIcon}>📝</span>
-                  <h3 style={styles.cardTitleText}>
-                    {assignment.quizzes?.title || "Test"}
-                  </h3>
+          {assignments.map((assignment) => {
+            const resultStats = getResultStats(assignment);
+            const scoreValue = resultStats?.score ?? assignment.score;
+            return (
+              <div key={assignment.id} style={styles.card}>
+                <div style={styles.cardHeader}>
+                  <div style={styles.cardTitle}>
+                    <span style={styles.testIcon}>📝</span>
+                    <h3 style={styles.cardTitleText}>
+                      {assignment.quizzes?.title || "Test"}
+                    </h3>
+                  </div>
+                  {getStatusBadge(assignment.status)}
                 </div>
-                {getStatusBadge(assignment.status)}
-              </div>
 
               {assignment.quizzes?.description && (
                 <p style={styles.description}>
@@ -240,22 +303,48 @@ export default function StudentNotifications() {
                     </span>
                   </div>
                 )}
-                {assignment.status === "completed" &&
-                  assignment.score !== null && (
-                    <div style={styles.infoItem}>
-                      <span style={styles.infoIcon}>🏆</span>
+              </div>
+
+              {assignment.status === "completed" &&
+                scoreValue !== null && scoreValue !== undefined && (
+                  <div style={styles.resultSummary}>
+                    <div
+                      style={{
+                        ...styles.resultBox,
+                        borderColor:
+                          scoreValue < 50
+                            ? "rgba(239, 68, 68, 0.2)"
+                            : "rgba(34, 197, 94, 0.2)",
+                        background:
+                          scoreValue < 50
+                            ? "rgba(239, 68, 68, 0.08)"
+                            : "rgba(34, 197, 94, 0.08)",
+                      }}
+                    >
+                      <span style={styles.resultLabel}>Natija</span>
                       <span
                         style={{
-                          ...styles.infoText,
-                          fontWeight: "bold",
-                          color: "#6ee7b7",
+                          ...styles.resultValue,
+                          color: scoreValue < 50 ? "#ef4444" : "#6ee7b7",
                         }}
                       >
-                        {assignment.score}%
+                        {scoreValue}%
                       </span>
                     </div>
-                  )}
-              </div>
+                    <div style={styles.resultBox}>
+                      <span style={styles.resultLabel}>To'g'ri javoblar</span>
+                      <span style={styles.resultValue}>
+                        {resultStats?.correct ?? 0}
+                      </span>
+                    </div>
+                    <div style={styles.resultBox}>
+                      <span style={styles.resultLabel}>Noto'g'ri javoblar</span>
+                      <span style={styles.resultValue}>
+                        {resultStats?.incorrect ?? 0}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
               {/* Access Code Display for pending and in_progress tests */}
               {(assignment.status === "pending" ||
@@ -333,7 +422,7 @@ export default function StudentNotifications() {
                 )}
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
 
@@ -516,6 +605,33 @@ const styles = {
     background: "rgba(34, 197, 94, 0.1)",
     borderRadius: "12px",
     marginBottom: "16px",
+  },
+  resultSummary: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: "12px",
+    marginBottom: "16px",
+  },
+  resultBox: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+    padding: "16px",
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: "16px",
+  },
+  resultLabel: {
+    fontSize: "12px",
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.7)",
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+  },
+  resultValue: {
+    fontSize: "22px",
+    fontWeight: "700",
+    color: "#fff",
   },
   accessCodeBox: {
     display: "flex",
