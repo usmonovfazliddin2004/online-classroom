@@ -425,7 +425,8 @@ export default function TeacherPage() {
             <span onClick={() => navigate("/teacher/groups")}>Guruhlar</span>
 
             <div className="menu-divider" />
-            <span onClick={() => navigate("/teacher/online-quiz")}>Quzi test</span>
+            <span onClick={() => navigate("/teacher/online-quiz")}>Quiz test</span>
+
           </nav>
 
           

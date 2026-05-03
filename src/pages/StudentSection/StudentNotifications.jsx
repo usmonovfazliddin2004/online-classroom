@@ -329,7 +329,7 @@ export default function StudentNotifications() {
                   </button>
                 )}
                 {assignment.status === "completed" && (
-                  <span style={styles.completedText}>✅ Test topshirilgan</span>
+                  <span style={styles.completedText}>Test topshirilgan</span>
                 )}
               </div>
             </div>
@@ -380,7 +380,7 @@ export default function StudentNotifications() {
                 }}
                 disabled={verifying || accessCode.length !== 6}
               >
-                {verifying ? "Tekshirilmoqda..." : "✅ Tasdiqlash va kirish"}
+                {verifying ? "Tekshirilmoqda..." : "Tasdiqlash va kirish"}
               </button>
             </div>
           </div>

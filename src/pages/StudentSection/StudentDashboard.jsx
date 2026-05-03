@@ -184,9 +184,19 @@ export default function StudentDashboard() {
       console.error("Lessons error:", error);
     }
 
+    // Parse source_files if it's a string (JSON)
+    const parsedLessons = (lessons || []).map(lesson => ({
+      ...lesson,
+      source_files: lesson.source_files 
+        ? (typeof lesson.source_files === 'string' 
+            ? JSON.parse(lesson.source_files) 
+            : lesson.source_files)
+        : []
+    }));
+
     setLessonsByCourse((prev) => ({
       ...prev,
-      [courseId]: lessons || [],
+      [courseId]: parsedLessons,
     }));
     setLoadingLessonsFor(null);
   };
@@ -205,27 +215,39 @@ export default function StudentDashboard() {
         return;
       }
 
-      const response = await fetch(url);
+      // url parametri object bo'lishi mumkin: { url, originalName }
+      let fixedUrl = url;
+      let fileName = null;
+      if (typeof url === 'object' && url !== null) {
+        fixedUrl = url.url;
+        fileName = url.originalName;
+      }
+      if (typeof fixedUrl === 'string' && fixedUrl.startsWith('https:/') && !fixedUrl.startsWith('https://')) {
+        fixedUrl = 'https://' + fixedUrl.substring(8);
+      }
+      if (!fileName) {
+        fileName = fixedUrl.split("/").pop();
+        fileName = decodeURIComponent(fileName).replace(/["}]/g, "");
+      }
+
+      toast.loading("Fayl yuklanmoqda...", { autoClose: false });
+      const response = await fetch(fixedUrl);
       if (!response.ok) {
         throw new Error("Fayl yuklab bo‘lmadi");
       }
-
       const blob = await response.blob();
-
-      // 🔥 ORIGINAL FILE NAME
-      let fileName = url.split("/").pop();
-      fileName = decodeURIComponent(fileName).replace(/["}]/g, "");
-
       const link = document.createElement("a");
       link.href = window.URL.createObjectURL(blob);
       link.download = fileName;
-
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      toast.dismiss();
+      toast.success(`"${fileName}" yuklandi`);
     } catch (err) {
       console.error(err);
-      toast.error("Faylni yuklashda xatolik");
+      toast.dismiss();
+      window.open(typeof url === 'object' ? url.url : url, '_blank');
     }
   };
   return (
@@ -339,7 +361,6 @@ export default function StudentDashboard() {
               {acceptedCourses.map((courseItem, index) => {
                 const courseId = courseItem.course_id;
                 const course = courseItem.courses;
-                const lessons = lessonsByCourse[courseId] || [];
 
                 return (
                   <div key={courseId} style={styles.courseCard}>
@@ -454,22 +475,23 @@ export default function StudentDashboard() {
                               )}
                               {Array.isArray(lesson.source_files) &&
                                 lesson.source_files.length > 0 &&
-                                lesson.source_files.map((source, i) => (
-                                  <button
-                                    key={i}
-                                    onClick={() => {
-                                      const fileUrl = source?.url || source;
-                                      if (!fileUrl) {
-                                        toast.error("File topilmadi");
-                                        return;
-                                      }
-                                      downloadFile(fileUrl);
-                                    }}
-                                    style={styles.fileBtn}
-                                  >
-                                    📄 Fayl #{i + 1}
-                                  </button>
-                                ))}
+                                lesson.source_files.map((source, i) => {
+                                  // source: { url, originalName } yoki string
+                                  let fileObj = source;
+                                  if (typeof source === 'string') {
+                                    fileObj = { url: source };
+                                  }
+                                  if (!fileObj.url) return null;
+                                  return (
+                                    <button
+                                      key={i}
+                                      onClick={() => downloadFile(fileObj)}
+                                      style={styles.fileBtn}
+                                    >
+                                      📄 {fileObj.originalName ? fileObj.originalName : `Fayl #${i + 1}`}
+                                    </button>
+                                  );
+                                })}
                             </div>
                           </div>
                         </li>

@@ -36,9 +36,11 @@ export default function CreateLesson() {
         if (error) throw error;
         toast.success("Dars muvaffaqiyatli saqlandi!");
 
-        videoFileUrl = supabase.storage
+        const { data: publicUrlData } = supabase.storage
           .from("lesson-files")
-          .getPublicUrl(videoPath).data.publicUrl;
+          .getPublicUrl(videoPath);
+        
+        videoFileUrl = publicUrlData?.publicUrl || null;
       }
 
       // 📎 SOURCE FILES
@@ -47,15 +49,19 @@ export default function CreateLesson() {
 
         const { error } = await supabase.storage
           .from("lesson-files")
-          .upload(filePath, file);
+          .upload(filePath, file, {
+            contentType: file.type,
+            upsert: true,
+          });
 
         if (error) throw error;
 
-        const fileUrl = supabase.storage
+        const { data: publicUrlData } = supabase.storage
           .from("lesson-files")
-          .getPublicUrl(filePath).data.publicUrl;
+          .getPublicUrl(filePath);
 
-        sourceUrls.push(fileUrl);
+        const fileUrl = publicUrlData?.publicUrl;
+        if (fileUrl) sourceUrls.push({ url: fileUrl, originalName: file.name });
       }
 
       // 👤 USER

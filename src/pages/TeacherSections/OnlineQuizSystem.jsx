@@ -1,17 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../../supabase';
-import { toast } from 'react-toastify';
+import React, { useState, useEffect, useCallback } from "react";
+import { supabase } from "../../supabase";
+import { toast } from "react-toastify";
+import * as XLSX from "xlsx";
 
 export default function OnlineQuizSystem() {
   const [students, setStudents] = useState([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
-  const [groups, setGroups] = useState(['Barchasi']);
+  const [groups, setGroups] = useState(["Barchasi"]);
+  // const [mode, setMode] = useState('create'); // 🔥 yangi qo‘shamiz
+  const [isCreating, setIsCreating] = useState(true);
 
   useEffect(() => {
     const fetchStudentsAndGroups = async () => {
       try {
         // Get current user (teacher)
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) {
           setLoadingStudents(false);
           return;
@@ -21,12 +26,12 @@ export default function OnlineQuizSystem() {
 
         // 1. Get teacher's courses
         const { data: courses, error: coursesError } = await supabase
-          .from('courses')
-          .select('id')
-          .eq('teacher_id', teacherId);
+          .from("courses")
+          .select("id")
+          .eq("teacher_id", teacherId);
 
         if (coursesError) {
-          console.error('Error fetching courses:', coursesError);
+          console.error("Error fetching courses:", coursesError);
           setLoadingStudents(false);
           return;
         }
@@ -36,17 +41,17 @@ export default function OnlineQuizSystem() {
           return;
         }
 
-        const courseIds = courses.map(c => c.id);
+        const courseIds = courses.map((c) => c.id);
 
         // 2. Get accepted students from course_requests
         const { data: requests, error: requestsError } = await supabase
-          .from('course_requests')
-          .select('student_id')
-          .in('course_id', courseIds)
-          .eq('status', 'accepted');
+          .from("course_requests")
+          .select("student_id")
+          .in("course_id", courseIds)
+          .eq("status", "accepted");
 
         if (requestsError) {
-          console.error('Error fetching requests:', requestsError);
+          console.error("Error fetching requests:", requestsError);
           setLoadingStudents(false);
           return;
         }
@@ -57,39 +62,39 @@ export default function OnlineQuizSystem() {
         }
 
         // Get unique student IDs
-        const studentIds = [...new Set(requests.map(r => r.student_id))];
+        const studentIds = [...new Set(requests.map((r) => r.student_id))];
 
         // 3. Get user details for students
         const { data: users, error: usersError } = await supabase
-          .from('users')
-          .select('id, first_name, last_name, email')
-          .in('id', studentIds);
+          .from("users")
+          .select("id, first_name, last_name, email")
+          .in("id", studentIds);
 
         if (usersError) {
-          console.error('Error fetching users:', usersError);
+          console.error("Error fetching users:", usersError);
           setLoadingStudents(false);
           return;
         }
 
         // 4. Get teacher's groups
         const { data: groupsData, error: groupsError } = await supabase
-          .from('groups')
-          .select('id, name')
-          .eq('teacher_id', teacherId);
+          .from("groups")
+          .select("id, name")
+          .eq("teacher_id", teacherId);
 
         if (groupsError) {
-          console.error('Error fetching groups:', groupsError);
+          console.error("Error fetching groups:", groupsError);
         }
 
         // 5. Get group memberships
         let groupMemberships = [];
         if (groupsData && groupsData.length > 0) {
-          const groupIds = groupsData.map(g => g.id);
+          const groupIds = groupsData.map((g) => g.id);
           const { data: membersData, error: membersError } = await supabase
-            .from('group_members')
-            .select('student_id, group_id')
-            .in('student_id', studentIds)
-            .in('group_id', groupIds);
+            .from("group_members")
+            .select("student_id, group_id")
+            .in("student_id", studentIds)
+            .in("group_id", groupIds);
 
           if (!membersError && membersData) {
             groupMemberships = membersData;
@@ -99,34 +104,39 @@ export default function OnlineQuizSystem() {
         // Format students with group names
         const groupNameMap = {};
         if (groupsData) {
-          groupsData.forEach(g => {
+          groupsData.forEach((g) => {
             groupNameMap[g.id] = g.name;
           });
         }
 
         // Create student to group name mapping
         const studentGroupMap = {};
-        groupMemberships.forEach(m => {
+        groupMemberships.forEach((m) => {
           if (groupNameMap[m.group_id]) {
             studentGroupMap[m.student_id] = groupNameMap[m.group_id];
           }
         });
 
         // Format students
-        const formattedStudents = (users || []).map(user => ({
+        const formattedStudents = (users || []).map((user) => ({
           id: user.id,
-          name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Noma\'lum',
-          email: user.email || '',
-          group: studentGroupMap[user.id] || ''
+          name:
+            `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
+            "Noma'lum",
+          email: user.email || "",
+          group: studentGroupMap[user.id] || "",
         }));
 
         setStudents(formattedStudents);
 
         // Get unique groups
-        const uniqueGroups = ['Barchasi', ...new Set(formattedStudents.map(s => s.group).filter(Boolean))];
+        const uniqueGroups = [
+          "Barchasi",
+          ...new Set(formattedStudents.map((s) => s.group).filter(Boolean)),
+        ];
         setGroups(uniqueGroups);
       } catch (err) {
-        console.error('Failed to fetch students:', err);
+        console.error("Failed to fetch students:", err);
       } finally {
         setLoadingStudents(false);
       }
@@ -135,53 +145,83 @@ export default function OnlineQuizSystem() {
     fetchStudentsAndGroups();
   }, []);
 
+  // const [loadedFromDB, setLoadedFromDB] = useState(false);
 
   useEffect(() => {
-  const fetchQuizzes = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (isCreating) return; // 🔥 ENG MUHIM
 
-    const { data, error } = await supabase
-      .from('quizzes')
-      .select('*')
-      .eq('teacher_id', user.id);
+    const fetchQuizzes = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
 
-    if (error) {
-      console.error(error);
-      return;
-    }
+      const { data } = await supabase
+        .from("quizzes")
+        .select("*")
+        .eq("teacher_id", user.id);
 
-    if (data && data.length > 0) {
-      // oxirgi quizni yuklaymiz
-      const latestQuiz = data[data.length - 1];
+      if (data && data.length > 0) {
+        const latestQuiz = data[data.length - 1];
 
-      setTestTitle(latestQuiz.title);
-      setTestDescription(latestQuiz.description);
-      setTimeLimit(latestQuiz.time_limit);
-      setDeadline(latestQuiz.deadline.slice(0, 16));
-      setQuestions(latestQuiz.questions); // 🔥 ENG MUHIM JOY
-    }
-  };
+        setTestTitle(latestQuiz.title);
+        setTestDescription(latestQuiz.description);
+        setTimeLimit(latestQuiz.time_limit);
+        setDeadline(latestQuiz.deadline.slice(0, 16));
+        setQuestions(latestQuiz.questions);
+      }
+    };
 
-  fetchQuizzes();
-}, []);
+    fetchQuizzes();
+  }, [isCreating]);
 
-  const [activeMenu, setActiveMenu] = useState('quiz');
-  const [testTitle, setTestTitle] = useState('');
-  const [testDescription, setTestDescription] = useState('');
-  const [timeLimit, setTimeLimit] = useState('');
-  const [deadline, setDeadline] = useState('');
+  const [activeMenu, setActiveMenu] = useState("quiz");
+  const [testTitle, setTestTitle] = useState("");
+  const [testDescription, setTestDescription] = useState("");
+  const [timeLimit, setTimeLimit] = useState("");
+  const [deadline, setDeadline] = useState("");
   const [questions, setQuestions] = useState([
-    { id: 'q1', type: 'multiple', text: '', options: ['', '', '', ''], correctAnswer: '' }
+    {
+      id: "q1",
+      type: "multiple",
+      text: "",
+      options: ["", "", "", ""],
+      correctAnswer: "",
+    },
   ]);
-  const [filterGroup, setFilterGroup] = useState('Barchasi');
+  const [filterGroup, setFilterGroup] = useState("Barchasi");
   const [selectedStudents, setSelectedStudents] = useState([]);
-  const [notification, setNotification] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
-  
+  const [notification, setNotification] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [justCreatedTest, setJustCreatedTest] = useState(false);
+  const [selectedQuizForExport, setSelectedQuizForExport] = useState("all");
+  const [showExportModal, setShowExportModal] = useState(false);
+
+  // Clear form inputs when test is created
+  // Clear form inputs when test is created, but NOT after loading quiz from DB
+  useEffect(() => {
+    if (justCreatedTest) {
+      setTestTitle("");
+      setTestDescription("");
+      setTimeLimit("");
+      setDeadline("");
+      setQuestions([
+        {
+          id: `q${Date.now()}${Math.random()}`,
+          type: "multiple",
+          text: "",
+          options: ["", "", "", ""],
+          correctAnswer: "",
+        },
+      ]);
+      setSelectedStudents([]);
+      setJustCreatedTest(false);
+    }
+  }, [justCreatedTest]);
+
   const [assignments, setAssignments] = useState(() => {
     try {
-      const stored = localStorage.getItem('onlineQuizData');
+      const stored = localStorage.getItem("onlineQuizData");
       if (stored) {
         const parsed = JSON.parse(stored);
         return parsed.assignments || [];
@@ -194,7 +234,7 @@ export default function OnlineQuizSystem() {
 
   const [savedTests, setSavedTests] = useState(() => {
     try {
-      const stored = localStorage.getItem('onlineQuizData');
+      const stored = localStorage.getItem("onlineQuizData");
       if (stored) {
         const parsed = JSON.parse(stored);
         return parsed.savedTests || [];
@@ -207,7 +247,7 @@ export default function OnlineQuizSystem() {
 
   const [lastCredentials, setLastCredentials] = useState(() => {
     try {
-      const stored = localStorage.getItem('onlineQuizData');
+      const stored = localStorage.getItem("onlineQuizData");
       if (stored) {
         const parsed = JSON.parse(stored);
         return parsed.lastCredentials || [];
@@ -220,13 +260,103 @@ export default function OnlineQuizSystem() {
 
   useEffect(() => {
     localStorage.setItem(
-      'onlineQuizData',
-      JSON.stringify({ assignments, savedTests, lastCredentials })
+      "onlineQuizData",
+      JSON.stringify({ assignments, savedTests, lastCredentials }),
     );
   }, [assignments, savedTests, lastCredentials]);
 
+  // Fetch real assignments from Supabase
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Get teacher's quizzes first
+        const { data: quizzes } = await supabase
+          .from("quizzes")
+          .select("id")
+          .eq("teacher_id", user.id);
+
+        if (!quizzes || quizzes.length === 0) return;
+
+        const quizIds = quizzes.map((q) => q.id);
+
+        // Get assignments for these quizzes
+        const { data: dbAssignments, error } = await supabase
+          .from("quiz_assignments")
+          .select("*")
+          .in("quiz_id", quizIds);
+
+        if (error) {
+          console.error("Error fetching assignments:", error);
+          return;
+        }
+
+        if (dbAssignments && dbAssignments.length > 0) {
+          // Get student details
+          const studentIds = [
+            ...new Set(dbAssignments.map((a) => a.student_id)),
+          ];
+          const { data: users } = await supabase
+            .from("users")
+            .select("id, first_name, last_name, email")
+            .in("id", studentIds);
+
+          const userMap = {};
+          if (users) {
+            users.forEach((u) => {
+              userMap[u.id] = u;
+            });
+          }
+
+          // Get quiz details for each assignment
+          const quizIds = [...new Set(dbAssignments.map((a) => a.quiz_id))];
+          const { data: quizzes } = await supabase
+            .from("quizzes")
+            .select("id, title, deadline")
+            .in("id", quizIds);
+
+          const quizMap = {};
+          if (quizzes) {
+            quizzes.forEach((q) => {
+              quizMap[q.id] = q;
+            });
+          }
+
+          // Format assignments with student names and quiz info
+          const formattedAssignments = dbAssignments.map((a) => ({
+            assignmentId: a.id,
+            testId: a.quiz_id,
+            quizTitle: quizMap[a.quiz_id]?.title || "Noma'lum test",
+            deadline: quizMap[a.quiz_id]?.deadline || "",
+            studentId: a.student_id,
+            name: userMap[a.student_id]
+              ? `${userMap[a.student_id].first_name || ""} ${userMap[a.student_id].last_name || ""}`.trim()
+              : a.student_name || "Noma'lum",
+            email: userMap[a.student_id]?.email || a.student_email || "",
+            group: a.student_group || "",
+            username: userMap[a.student_id]?.email || a.student_email || "",
+            password: a.access_code,
+            status: a.status === "completed" ? "Bajarildi" : "Bajarilmagan",
+            score: a.score || 0,
+            assignedAt: a.created_at || new Date().toISOString(),
+          }));
+
+          setAssignments(formattedAssignments);
+        }
+      } catch (err) {
+        console.error("Error fetching assignments:", err);
+      }
+    };
+
+    fetchAssignments();
+  }, []);
+
   const filteredStudents =
-    filterGroup === 'Barchasi'
+    filterGroup === "Barchasi"
       ? students
       : students.filter((student) => student.group === filterGroup);
 
@@ -234,7 +364,7 @@ export default function OnlineQuizSystem() {
     setSelectedStudents((prev) =>
       prev.includes(studentId)
         ? prev.filter((id) => id !== studentId)
-        : [...prev, studentId]
+        : [...prev, studentId],
     );
   };
 
@@ -243,11 +373,11 @@ export default function OnlineQuizSystem() {
       ...prev,
       {
         id: `q${Date.now()}${Math.random()}`,
-        type: 'multiple',
-        text: '',
-        options: ['', '', '', ''],
-        correctAnswer: ''
-      }
+        type: "multiple",
+        text: "",
+        options: ["", "", "", ""],
+        correctAnswer: "",
+      },
     ]);
   };
 
@@ -259,35 +389,38 @@ export default function OnlineQuizSystem() {
     setQuestions((prev) =>
       prev.map((question) => {
         if (question.id !== id) return question;
-        if (field === 'type') {
+        if (field === "type") {
           return {
             ...question,
             type: value,
-            correctAnswer: '',
-            options: value === 'multiple' ? ['', '', '', ''] : []
+            correctAnswer: "",
+            options: value === "multiple" ? ["", "", "", ""] : [],
           };
         }
-        if (field === 'text') {
+        if (field === "text") {
           return { ...question, text: value };
         }
-        if (field === 'correctAnswer') {
+        if (field === "correctAnswer") {
           return { ...question, correctAnswer: value };
         }
-        if (field === 'option') {
+        if (field === "option") {
           const options = [...question.options];
           options[index] = value;
           const correctAnswer =
-            question.correctAnswer === `${index}` ? `${index}` : question.correctAnswer;
+            question.correctAnswer === `${index}`
+              ? `${index}`
+              : question.correctAnswer;
           return { ...question, options, correctAnswer };
         }
         return question;
-      })
+      }),
     );
   };
 
   const randomPassword = useCallback(() => {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
+    const chars =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let result = "";
     for (let i = 0; i < 6; i += 1) {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
@@ -296,9 +429,9 @@ export default function OnlineQuizSystem() {
 
   const validateQuestions = questions.every((question) => {
     if (!question.text.trim()) return false;
-    if (question.type === 'multiple') {
+    if (question.type === "multiple") {
       const filledOptions = question.options.filter((opt) => opt.trim());
-      return filledOptions.length >= 2 && question.correctAnswer !== '';
+      return filledOptions.length >= 2 && question.correctAnswer !== "";
     }
     return question.correctAnswer.trim();
   });
@@ -314,36 +447,40 @@ export default function OnlineQuizSystem() {
 
   const saveTest = useCallback(async () => {
     if (!canSave) return;
-    
+
     try {
       // Get current user (teacher)
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
-        toast.error('Foydalanuvchi topilmadi');
+        toast.error("Foydalanuvchi topilmadi");
         return;
       }
 
-      const testId = crypto.randomUUID ? crypto.randomUUID() : `quiz-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const testId = crypto.randomUUID
+        ? crypto.randomUUID()
+        : `quiz-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const selected = students.filter((student) =>
-        selectedStudents.includes(student.id)
+        selectedStudents.includes(student.id),
       );
 
       // 1. Save quiz to Supabase
-      const { error: quizError } = await supabase
-        .from('quizzes')
-        .insert([{
+      const { error: quizError } = await supabase.from("quizzes").insert([
+        {
           id: testId,
           teacher_id: user.id,
           title: testTitle.trim(),
           description: testDescription.trim(),
           time_limit: parseInt(timeLimit),
           deadline: new Date(deadline).toISOString(),
-          questions: questions
-        }]);
+          questions: questions,
+        },
+      ]);
 
       if (quizError) {
-        console.error('Quiz save error:', quizError);
-        toast.error('Testni saqlashda xatolik: ' + quizError.message);
+        console.error("Quiz save error:", quizError);
+        toast.error("Testni saqlashda xatolik: " + quizError.message);
         return;
       }
 
@@ -355,16 +492,18 @@ export default function OnlineQuizSystem() {
         student_email: student.email,
         student_group: student.group || null,
         access_code: randomPassword(),
-        status: 'pending'
+        status: "pending",
       }));
 
       const { error: assignmentsError } = await supabase
-        .from('quiz_assignments')
+        .from("quiz_assignments")
         .insert(assignmentsData);
 
       if (assignmentsError) {
-        console.error('Assignments error:', assignmentsError);
-        toast.error('Topshiriqlarni yaratishda xatolik: ' + assignmentsError.message);
+        console.error("Assignments error:", assignmentsError);
+        toast.error(
+          "Topshiriqlarni yaratishda xatolik: " + assignmentsError.message,
+        );
         return;
       }
 
@@ -372,15 +511,17 @@ export default function OnlineQuizSystem() {
       const credentials = selected.map((student, index) => ({
         assignmentId: assignmentsData[index].access_code, // Using access_code as ID for display
         testId,
+        quizTitle: testTitle.trim(),
+        deadline: new Date(deadline).toISOString(),
         studentId: student.id,
         name: student.name,
         email: student.email,
         group: student.group,
         username: student.email,
         password: assignmentsData[index].access_code,
-        status: 'Bajarilmagan',
+        status: "Bajarilmagan",
         score: 0,
-        assignedAt: new Date().toISOString()
+        assignedAt: new Date().toISOString(),
       }));
 
       // 4. Update local state
@@ -394,71 +535,225 @@ export default function OnlineQuizSystem() {
           deadline,
           questions,
           assignedAt: new Date().toISOString(),
-          assignedCount: credentials.length
+          assignedCount: credentials.length,
         },
-        ...prev
+        ...prev,
       ]);
       setLastCredentials(credentials);
-      setNotification(`${credentials.length} ta o'quvchiga test topshirildi. Bildirishnomalar yuborildi.`);
-      setSuccessMessage('Onlayn test muvaffaqiyatli yaratildi va tanlangan o\'quvchilarga topshirildi.');
-      setTimeout(() => setSuccessMessage(''), 5000);
+      setNotification(
+        `${credentials.length} ta o'quvchiga test topshirildi. Bildirishnomalar yuborildi.`,
+      );
+      setSuccessMessage(
+        "Onlayn test muvaffaqiyatli yaratildi va tanlangan o'quvchilarga topshirildi.",
+      );
+      setTimeout(() => setSuccessMessage(""), 5000);
 
-      toast.success('Test muvaffaqiyatli yaratildi!');
+      // Mark that test was just created - this will trigger the useEffect to clear inputs
+      setJustCreatedTest(true);
+      setIsCreating(true);
+      setJustCreatedTest(true);
+      toast.success("Test muvaffaqiyatli yaratildi!");
     } catch (err) {
-      console.error('Save test error:', err);
-      toast.error('Xatolik yuz berdi: ' + err.message);
+      console.error("Save test error:", err);
+      toast.error("Xatolik yuz berdi: " + err.message);
     }
-  }, [canSave, selectedStudents, students, testTitle, testDescription, timeLimit, deadline, questions, randomPassword]);
+  }, [
+    canSave,
+    selectedStudents,
+    students,
+    testTitle,
+    testDescription,
+    timeLimit,
+    deadline,
+    questions,
+    randomPassword,
+  ]);
 
-  const simulateSubmission = (assignmentId) => {
-    setAssignments((prev) =>
-      prev.map((assignment) => {
-        if (assignment.assignmentId !== assignmentId) return assignment;
-        const total = questions.length || 1;
-        let correct = 0;
-        questions.forEach((question) => {
-          const chance = Math.random();
-          if (question.type === 'multiple') {
-            if (chance > 0.4) correct += 1;
-          } else {
-            if (chance > 0.45) correct += 1;
-          }
-        });
-        const score = Math.round((correct / total) * 100);
-        return {
-          ...assignment,
-          score,
-          status: 'Bajarildi',
-          submittedAt: new Date().toISOString()
-        };
+  const simulateSubmission = async (assignmentId) => {
+    // Find the assignment to get quiz_id
+    const assignment = assignments.find((a) => a.assignmentId === assignmentId);
+    if (!assignment) return;
+
+    // Get quiz questions for scoring
+    const { data: quiz } = await supabase
+      .from("quizzes")
+      .select("questions")
+      .eq("id", assignment.testId)
+      .single();
+
+    const quizQuestions = quiz?.questions || [];
+    const total = quizQuestions.length || 1;
+    let correct = 0;
+    quizQuestions.forEach((question) => {
+      const chance = Math.random();
+      if (question.type === "multiple") {
+        if (chance > 0.4) correct += 1;
+      } else {
+        if (chance > 0.45) correct += 1;
+      }
+    });
+    const score = Math.round((correct / total) * 100);
+
+    // Update in Supabase
+    const { error } = await supabase
+      .from("quiz_assignments")
+      .update({
+        status: "completed",
+        score,
+        submitted_at: new Date().toISOString(),
       })
+      .eq("id", assignmentId);
+
+    if (error) {
+      console.error("Error updating assignment:", error);
+      toast.error("Xatolik yuz berdi");
+      return;
+    }
+
+    // Update local state
+    setAssignments((prev) =>
+      prev.map((a) => {
+        if (a.assignmentId !== assignmentId) return a;
+        return {
+          ...a,
+          score,
+          status: "Bajarildi",
+          submittedAt: new Date().toISOString(),
+        };
+      }),
     );
+
+    toast.success("Natijalar yangilandi!");
   };
 
-  const exportResults = () => {
-    const header = ['O\'quvchi ismi', 'Email', 'Guruh', 'Ball', 'Holat', 'Topshirilgan sana'];
-    const rows = assignments.map((assignment) => [
-      assignment.name,
-      assignment.email,
-      assignment.group,
-      `${assignment.score}%`,
-      assignment.status,
-      new Date(assignment.assignedAt).toLocaleString()
-    ]);
-    const csv = [header, ...rows]
-      .map((row) =>
-        row
-          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
-          .join(',')
-      )
-      .join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `quiz-natijalari-${Date.now()}.xlsx`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const exportResults = (quizId = null) => {
+    // Filter assignments based on selected quiz
+    const filteredAssignments =
+      quizId && quizId !== "all"
+        ? assignments.filter((a) => a.testId === quizId)
+        : assignments;
+
+    // Get quiz title for filename
+    let fileName = "quiz-natijalari";
+    if (quizId && quizId !== "all") {
+      const selectedQuiz = filteredAssignments[0];
+      if (selectedQuiz && selectedQuiz.quizTitle) {
+        fileName = `${selectedQuiz.quizTitle}-natijalari`;
+      }
+    }
+
+    // Create worksheet data
+    const worksheetData = [
+      [
+        "Test Nomi",
+        "Muddat",
+        "O'quvchi ismi",
+        "Email",
+        "Guruh",
+        "Ball",
+        "Holat",
+        "Topshirilgan sana",
+      ],
+      ...filteredAssignments.map((assignment) => [
+        assignment.quizTitle,
+        assignment.deadline
+          ? new Date(assignment.deadline).toLocaleDateString("uz-UZ")
+          : "-",
+        assignment.name,
+        assignment.email,
+        assignment.group,
+        `${assignment.score}%`,
+        assignment.status,
+        new Date(assignment.assignedAt).toLocaleString(),
+      ]),
+    ];
+
+    // Create workbook and worksheet
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Natijalar");
+
+    // Generate and download Excel file
+    XLSX.writeFile(workbook, `${fileName}-${Date.now()}.xlsx`);
+    setShowExportModal(false);
+  };
+
+  const handleDeleteTest = (testId) => {
+    toast.info(
+      ({ closeToast }) => (
+        <div style={{ color: "white" }}>
+          <p style={{ marginBottom: "12px", fontWeight: "500" }}>
+            Testni o‘chirmoqchimisiz?
+          </p>
+
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              style={{
+                flex: 1,
+                padding: "8px",
+                borderRadius: "8px",
+                border: "none",
+                background: "#ef4444",
+                color: "white",
+                cursor: "pointer",
+                width: "150px",
+              }}
+              onClick={async () => {
+                closeToast();
+
+                try {
+                  const { error: e1 } = await supabase
+                    .from("quiz_assignments")
+                    .delete()
+                    .eq("quiz_id", testId);
+
+                  if (e1) throw e1;
+
+                  const { error: e2 } = await supabase
+                    .from("quizzes")
+                    .delete()
+                    .eq("id", testId);
+
+                  if (e2) throw e2;
+
+                  setAssignments((prev) =>
+                    prev.filter((a) => a.testId !== testId),
+                  );
+
+                  toast.success("Test o‘chirildi ✅");
+                } catch (err) {
+                  toast.error("Xatolik: " + err.message);
+                }
+              }}
+            >
+              🗑️ Ha, o‘chirish
+            </button>
+
+            <button
+              style={{
+                flex: 1,
+                padding: "8px",
+                borderRadius: "8px",
+                border: "1px solid rgba(255,255,255,0.2)",
+                background: "transparent",
+                color: "white",
+                cursor: "pointer",
+              }}
+              onClick={closeToast}
+            >
+              Bekor qilish
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        autoClose: false,
+        closeOnClick: false,
+        draggable: false,
+      },
+    );
   };
 
   return (
@@ -484,7 +779,7 @@ export default function OnlineQuizSystem() {
         .quiz-dashboard {
           display: flex;
           min-height: 100vh;
-          overflow-y: auto;
+          overflow: visible;
           background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
           font-family: 'Inter', system-ui, -apple-system, sans-serif;
           color: #ffffff;
@@ -493,6 +788,7 @@ export default function OnlineQuizSystem() {
         /* ===== Sidebar ===== */
         .quiz-sidebar {
           width: 280px;
+          min-width: 280px;
           background: rgba(255, 255, 255, 0.03);
           backdrop-filter: blur(20px);
           border-right: 1px solid rgba(255, 255, 255, 0.08);
@@ -500,10 +796,13 @@ export default function OnlineQuizSystem() {
           display: flex;
           flex-direction: column;
           gap: 32px;
-          position: sticky;
+          position: fixed;
           top: 0;
+          left: 0;
           height: 100vh;
+          overflow: hidden;
           flex-shrink: 0;
+          z-index: 100;
         }
 
         .quiz-logo {
@@ -511,6 +810,7 @@ export default function OnlineQuizSystem() {
           align-items: center;
           gap: 14px;
           padding: 0 8px;
+          flex-shrink: 0;
         }
 
         .quiz-logo-icon {
@@ -539,6 +839,8 @@ export default function OnlineQuizSystem() {
           display: flex;
           flex-direction: column;
           gap: 8px;
+          overflow-y: auto;
+          flex: 1;
         }
 
         .quiz-menu-item {
@@ -558,6 +860,7 @@ export default function OnlineQuizSystem() {
           text-align: left;
           position: relative;
           overflow: hidden;
+          flex-shrink: 0;
         }
 
         .quiz-menu-item::before {
@@ -598,13 +901,12 @@ export default function OnlineQuizSystem() {
         /* ===== Main Content ===== */
         .quiz-main {
           flex: 1;
-          padding: 32px 40px;
-          display: flex;
-          flex-direction: column;
-          gap: 32px;
+          padding: 32px;
+          // margin-left: 280px; /* sidebar width */
+          width: calc(100% - 280px); /* 🔥 MUHIM */
           overflow-y: auto;
-          min-height: 100vh;
-        }
+          height: 100vh;
+}
 
         /* ===== Header ===== */
         .quiz-header {
@@ -667,6 +969,7 @@ export default function OnlineQuizSystem() {
           transition: all 0.3s ease;
           position: relative;
           overflow: hidden;
+          margin-bottom: 24px;
         }
 
         .quiz-card::before {
@@ -782,6 +1085,7 @@ export default function OnlineQuizSystem() {
 
         .quiz-textarea {
           min-height: 120px;
+          max-height: 200px;
           resize: vertical;
           line-height: 1.6;
         }
@@ -816,6 +1120,7 @@ export default function OnlineQuizSystem() {
           transition: all 0.3s ease;
           position: relative;
           overflow: hidden;
+          height: fit-content;
         }
 
         .quiz-btn::after {
@@ -836,6 +1141,7 @@ export default function OnlineQuizSystem() {
           height: 300px;
         }
 
+        
         .quiz-btn-primary {
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           color: #ffffff;
@@ -866,9 +1172,10 @@ export default function OnlineQuizSystem() {
         }
 
         .quiz-btn-sm {
-          padding: 10px 18px;
-          font-size: 0.85rem;
-          border-radius: 12px;
+          padding: 8px 14px;
+          font-size: 0.8rem;
+          border-radius: 10px;
+          white-space: nowrap;
         }
 
         .quiz-btn-danger {
@@ -1131,6 +1438,10 @@ export default function OnlineQuizSystem() {
           min-width: 700px;
         }
 
+        .quiz-table tr {
+          height: 70px;
+        }
+
         .quiz-table th {
           text-align: left;
           padding: 16px 20px;
@@ -1156,6 +1467,7 @@ export default function OnlineQuizSystem() {
           font-size: 0.9rem;
           color: rgba(255, 255, 255, 0.8);
           border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+          vertical-align: middle;
         }
 
         .quiz-table tr:last-child td {
@@ -1164,6 +1476,16 @@ export default function OnlineQuizSystem() {
 
         .quiz-table tr:hover td {
           background: rgba(255, 255, 255, 0.02);
+        }
+
+        .quiz-table td:last-child {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          justify-content: center;
+          flex-wrap: nowrap;
+          height: 82px;
+
         }
 
         /* ===== Status Badges ===== */
@@ -1306,12 +1628,16 @@ export default function OnlineQuizSystem() {
           }
 
           .quiz-sidebar {
-            width: 100%;
-            height: auto;
-            position: relative;
+            width: 280px;
+            min-width: 280px;
+            position: sticky; /* 🔥 fixed emas */
+            top: 0;
+            height: 100vh;
+          }
+
+          .quiz-main {
+            margin-left: 0;
             padding: 24px 20px;
-            border-right: none;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
           }
 
           .quiz-menu {
@@ -1324,10 +1650,6 @@ export default function OnlineQuizSystem() {
             flex: 1;
             min-width: fit-content;
             justify-content: center;
-          }
-
-          .quiz-main {
-            padding: 24px 20px;
           }
 
           .quiz-form-row {
@@ -1412,6 +1734,87 @@ export default function OnlineQuizSystem() {
           position: relative;
           z-index: 1;
         }
+
+        /* ===== Modal Styles ===== */
+        .quiz-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.7);
+          backdrop-filter: blur(4px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        .quiz-modal {
+          background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 24px;
+          padding: 28px;
+          width: 90%;
+          max-width: 450px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+          animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+          from { transform: translateY(20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+
+        .quiz-modal-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 20px;
+        }
+
+        .quiz-modal-header h3 {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: #ffffff;
+        }
+
+        .quiz-modal-close {
+          background: rgba(255, 255, 255, 0.1);
+          border: none;
+          color: rgba(255, 255, 255, 0.6);
+          width: 32px;
+          height: 32px;
+          border-radius: 10px;
+          cursor: pointer;
+          font-size: 1rem;
+          transition: all 0.2s ease;
+        }
+
+        .quiz-modal-close:hover {
+          background: rgba(255, 255, 255, 0.2);
+          color: #ffffff;
+        }
+
+        .quiz-modal-body {
+          margin-bottom: 24px;
+        }
+
+        .quiz-modal-footer {
+          display: flex;
+          gap: 12px;
+          justify-content: flex-end;
+        }
+        
+        .quiz-modal-footer .quiz-btn {
+          width: 200px;
+        }
       `}</style>
 
       {/* Sidebar */}
@@ -1420,11 +1823,11 @@ export default function OnlineQuizSystem() {
           <div className="quiz-logo-icon">📝</div>
           <span className="quiz-logo-text">LMS O'qituvchi</span>
         </div>
-        
+
         <nav className="quiz-menu">
           <button
-            className={`quiz-menu-item ${activeMenu === 'quiz' ? 'active' : ''}`}
-            onClick={() => setActiveMenu('quiz')}
+            className={`quiz-menu-item ${activeMenu === "quiz" ? "active" : ""}`}
+            onClick={() => setActiveMenu("quiz")}
           >
             <span className="quiz-menu-icon">🎯</span>
             Test/Yakuniy imtihon yaratish
@@ -1439,12 +1842,11 @@ export default function OnlineQuizSystem() {
           <div className="quiz-header-content">
             <h1>Onlayn Test / Viktorina Yaratuvchi</h1>
             <p>
-              Imtihonlar tuzing, o'quvchilarga topshiring, bildirishnomalar yuboring va natijalarni bir joyda ko'rib chiqing.
+              Imtihonlar tuzing, o'quvchilarga topshiring, bildirishnomalar
+              yuboring va natijalarni bir joyda ko'rib chiqing.
             </p>
           </div>
-          <div className="quiz-badge">
-            👨‍🏫 O'qituvchi Paneli
-          </div>
+          <div className="quiz-badge">👨‍🏫 O'qituvchi Paneli</div>
         </header>
 
         {/* Test Details & Rules */}
@@ -1456,7 +1858,9 @@ export default function OnlineQuizSystem() {
                 <div className="quiz-card-title-icon">📋</div>
                 <div>
                   <h2>Test Ma'lumotlari</h2>
-                  <p className="quiz-card-subtitle">Asosiy imtihon sozlamalari</p>
+                  <p className="quiz-card-subtitle">
+                    Asosiy imtihon sozlamalari
+                  </p>
                 </div>
               </div>
             </div>
@@ -1524,23 +1928,37 @@ export default function OnlineQuizSystem() {
             <div className="quiz-rules-list">
               <div className="quiz-rule-item">
                 <span className="quiz-rule-icon">⏰</span>
-                <span className="quiz-rule-text">O'quvchilar imtihonga faqat muddat tugaguncha kirishlari mumkin.</span>
+                <span className="quiz-rule-text">
+                  O'quvchilar imtihonga faqat muddat tugaguncha kirishlari
+                  mumkin.
+                </span>
               </div>
               <div className="quiz-rule-item">
                 <span className="quiz-rule-icon">⏱️</span>
-                <span className="quiz-rule-text">Vaqt cheklovi imtihon sessiyasi davomiyligini belgilaydi.</span>
+                <span className="quiz-rule-text">
+                  Vaqt cheklovi imtihon sessiyasi davomiyligini belgilaydi.
+                </span>
               </div>
               <div className="quiz-rule-item">
                 <span className="quiz-rule-icon">❌</span>
-                <span className="quiz-rule-text">Ishtirok etmaslik avtomatik ravishda 0 ball berilishiga olib keladi.</span>
+                <span className="quiz-rule-text">
+                  Ishtirok etmaslik avtomatik ravishda 0 ball berilishiga olib
+                  keladi.
+                </span>
               </div>
               <div className="quiz-rule-item">
                 <span className="quiz-rule-icon">✅</span>
-                <span className="quiz-rule-text">Avtomatik baholash topshirilgandan so'ng darhol ballni hisoblaydi.</span>
+                <span className="quiz-rule-text">
+                  Avtomatik baholash topshirilgandan so'ng darhol ballni
+                  hisoblaydi.
+                </span>
               </div>
               <div className="quiz-rule-item">
                 <span className="quiz-rule-icon">🔐</span>
-                <span className="quiz-rule-text">Har bir o'quvchi uchun kirish ma'lumotlari avtomatik yaratiladi.</span>
+                <span className="quiz-rule-text">
+                  Har bir o'quvchi uchun kirish ma'lumotlari avtomatik
+                  yaratiladi.
+                </span>
               </div>
             </div>
           </section>
@@ -1553,10 +1971,15 @@ export default function OnlineQuizSystem() {
               <div className="quiz-card-title-icon">❓</div>
               <div>
                 <h2>Savollar</h2>
-                <p className="quiz-card-subtitle">{questions.length} ta savol qo'shildi</p>
+                <p className="quiz-card-subtitle">
+                  {questions.length} ta savol qo'shildi
+                </p>
               </div>
             </div>
-            <button className="quiz-btn quiz-btn-secondary quiz-btn-sm" onClick={addQuestion}>
+            <button
+              className="quiz-btn quiz-btn-secondary quiz-btn-sm"
+              onClick={addQuestion}
+            >
               ➕ Savol Qo'shish
             </button>
           </div>
@@ -1568,7 +1991,9 @@ export default function OnlineQuizSystem() {
                   <div className="quiz-question-number">
                     <h3>{index + 1}-savol</h3>
                     <span className="quiz-type-badge">
-                      {question.type === 'multiple' ? '🔘 Tanlov' : '✍️ Qisqa javob'}
+                      {question.type === "multiple"
+                        ? "🔘 Tanlov"
+                        : "✍️ Qisqa javob"}
                     </span>
                   </div>
                   <button
@@ -1587,7 +2012,7 @@ export default function OnlineQuizSystem() {
                       className="quiz-input"
                       value={question.text}
                       onChange={(e) =>
-                        updateQuestion(question.id, 'text', e.target.value)
+                        updateQuestion(question.id, "text", e.target.value)
                       }
                       placeholder="Savolni shu yerga yozing..."
                     />
@@ -1599,7 +2024,7 @@ export default function OnlineQuizSystem() {
                       className="quiz-select"
                       value={question.type}
                       onChange={(e) =>
-                        updateQuestion(question.id, 'type', e.target.value)
+                        updateQuestion(question.id, "type", e.target.value)
                       }
                     >
                       <option value="multiple">Ko'p tanlovli</option>
@@ -1608,7 +2033,7 @@ export default function OnlineQuizSystem() {
                   </div>
                 </div>
 
-                {question.type === 'multiple' ? (
+                {question.type === "multiple" ? (
                   <>
                     <div className="quiz-form-group">
                       {question.options.map((option, optionIndex) => (
@@ -1620,9 +2045,9 @@ export default function OnlineQuizSystem() {
                             onChange={(e) =>
                               updateQuestion(
                                 question.id,
-                                'option',
+                                "option",
                                 e.target.value,
-                                optionIndex
+                                optionIndex,
                               )
                             }
                             placeholder={`${optionIndex + 1}-javob varianti`}
@@ -1637,7 +2062,11 @@ export default function OnlineQuizSystem() {
                         className="quiz-select"
                         value={question.correctAnswer}
                         onChange={(e) =>
-                          updateQuestion(question.id, 'correctAnswer', e.target.value)
+                          updateQuestion(
+                            question.id,
+                            "correctAnswer",
+                            e.target.value,
+                          )
                         }
                       >
                         <option value="">To'g'ri variantni tanlang</option>
@@ -1660,7 +2089,11 @@ export default function OnlineQuizSystem() {
                       className="quiz-input"
                       value={question.correctAnswer}
                       onChange={(e) =>
-                        updateQuestion(question.id, 'correctAnswer', e.target.value)
+                        updateQuestion(
+                          question.id,
+                          "correctAnswer",
+                          e.target.value,
+                        )
                       }
                       placeholder="Aniq javobni kiriting"
                     />
@@ -1678,10 +2111,12 @@ export default function OnlineQuizSystem() {
               <div className="quiz-card-title-icon">👥</div>
               <div>
                 <h2>O'quvchilarni Tanlash</h2>
-                <p className="quiz-card-subtitle">{selectedStudents.length} ta o'quvchi tanlangan</p>
+                <p className="quiz-card-subtitle">
+                  {selectedStudents.length} ta o'quvchi tanlangan
+                </p>
               </div>
             </div>
-            <div className="quiz-field" style={{ width: '220px' }}>
+            <div className="quiz-field" style={{ width: "220px" }}>
               <label>Guruh bo'yicha filtrlash</label>
               <select
                 className="quiz-select"
@@ -1707,25 +2142,38 @@ export default function OnlineQuizSystem() {
               {filteredStudents.length === 0 ? (
                 <div className="quiz-empty">
                   <div className="quiz-empty-icon">👥</div>
-                  <p className="quiz-empty-text">Ushbu guruhda o'quvchilar topilmadi.</p>
+                  <p className="quiz-empty-text">
+                    Ushbu guruhda o'quvchilar topilmadi.
+                  </p>
                 </div>
               ) : (
                 filteredStudents.map((student) => (
                   <div
                     key={student.id}
-                    className={`quiz-student-item ${selectedStudents.includes(student.id) ? 'selected' : ''}`}
+                    className={`quiz-student-item ${selectedStudents.includes(student.id) ? "selected" : ""}`}
                     onClick={() => toggleStudent(student.id)}
                   >
                     <div className="quiz-student-checkbox">
                       {selectedStudents.includes(student.id) && (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="white"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
                           <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
                       )}
                     </div>
                     <div className="quiz-student-info">
                       <span className="quiz-student-name">{student.name}</span>
-                      <span className="quiz-student-email">{student.email}</span>
+                      <span className="quiz-student-email">
+                        {student.email}
+                      </span>
                     </div>
                     <span className="quiz-group-badge">{student.group}</span>
                   </div>
@@ -1742,7 +2190,9 @@ export default function OnlineQuizSystem() {
               <div className="quiz-card-title-icon">💾</div>
               <div>
                 <h2>Saqlash va Topshirish</h2>
-                <p className="quiz-card-subtitle">Testni saqlang va o'quvchilarga topshiring</p>
+                <p className="quiz-card-subtitle">
+                  Testni saqlang va o'quvchilarga topshiring
+                </p>
               </div>
             </div>
           </div>
@@ -1753,21 +2203,27 @@ export default function OnlineQuizSystem() {
               onClick={saveTest}
               disabled={!canSave}
             >
-              ✅ Testni Saqlash
+              Testni Saqlash
             </button>
             <button
               className="quiz-btn quiz-btn-secondary"
               onClick={() => {
-                setTestTitle('');
-                setTestDescription('');
-                setTimeLimit('');
-                setDeadline('');
+                setTestTitle("");
+                setTestDescription("");
+                setTimeLimit("");
+                setDeadline("");
                 setQuestions([
-                  { id: 'q1', type: 'multiple', text: '', options: ['', '', '', ''], correctAnswer: '' }
+                  {
+                    id: "q1",
+                    type: "multiple",
+                    text: "",
+                    options: ["", "", "", ""],
+                    correctAnswer: "",
+                  },
                 ]);
                 setSelectedStudents([]);
-                setNotification('');
-                setSuccessMessage('');
+                setNotification("");
+                setSuccessMessage("");
                 setLastCredentials([]);
               }}
             >
@@ -1782,11 +2238,16 @@ export default function OnlineQuizSystem() {
             </div>
           )}
 
-          {!canSave && (testTitle || testDescription || questions.some(q => q.text) || selectedStudents.length > 0) && (
-            <div className="quiz-notification">
-              ⚠️ Barcha maydonlarni to'ldiring, savollar qo'shing va kamida bitta o'quvchini tanlang.
-            </div>
-          )}
+          {!canSave &&
+            (testTitle ||
+              testDescription ||
+              questions.some((q) => q.text) ||
+              selectedStudents.length > 0) && (
+              <div className="quiz-notification">
+                ⚠️ Barcha maydonlarni to'ldiring, savollar qo'shing va kamida
+                bitta o'quvchini tanlang.
+              </div>
+            )}
         </section>
 
         {/* Generated Credentials */}
@@ -1797,26 +2258,39 @@ export default function OnlineQuizSystem() {
                 <div className="quiz-card-title-icon">🔑</div>
                 <div>
                   <h2>Yaratilgan O'quvchi Ma'lumotlari</h2>
-                  <p className="quiz-card-subtitle">Faqat o'qituvchi uchun ko'rsatiladi</p>
+                  <p className="quiz-card-subtitle">
+                    Faqat o'qituvchi uchun ko'rsatiladi
+                  </p>
                 </div>
               </div>
             </div>
 
             <div className="quiz-credentials-grid">
               {lastCredentials.map((credential) => (
-                <div key={credential.assignmentId} className="quiz-credential-item">
-                  <span className="quiz-credential-name">👤 {credential.name}</span>
+                <div
+                  key={credential.assignmentId}
+                  className="quiz-credential-item"
+                >
+                  <span className="quiz-credential-name">
+                    👤 {credential.name}
+                  </span>
                   <div className="quiz-credential-detail">
                     <span className="quiz-credential-label">Email:</span>
-                    <span className="quiz-credential-value">{credential.email}</span>
+                    <span className="quiz-credential-value">
+                      {credential.email}
+                    </span>
                   </div>
                   <div className="quiz-credential-detail">
                     <span className="quiz-credential-label">Login:</span>
-                    <span className="quiz-credential-value">{credential.username}</span>
+                    <span className="quiz-credential-value">
+                      {credential.username}
+                    </span>
                   </div>
                   <div className="quiz-credential-detail">
                     <span className="quiz-credential-label">Parol:</span>
-                    <span className="quiz-credential-value">{credential.password}</span>
+                    <span className="quiz-credential-value">
+                      {credential.password}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -1831,26 +2305,100 @@ export default function OnlineQuizSystem() {
               <div className="quiz-card-title-icon">📊</div>
               <div>
                 <h2>Natijalar Paneli</h2>
-                <p className="quiz-card-subtitle">O'quvchilarning natijalarini ko'rib chiqing</p>
+                <p className="quiz-card-subtitle">
+                  O'quvchilarning natijalarini ko'rib chiqing
+                </p>
               </div>
             </div>
             {assignments.length > 0 && (
-              <button className="quiz-btn quiz-btn-primary quiz-btn-sm" onClick={exportResults}>
+              <button
+                className="quiz-btn quiz-btn-primary quiz-btn-sm"
+                onClick={() => setShowExportModal(true)}
+              >
                 📥 Natijalarni Yuklab Olish
               </button>
             )}
           </div>
 
+          {/* Export Modal */}
+          {showExportModal && (
+            <div
+              className="quiz-modal-overlay"
+              onClick={() => setShowExportModal(false)}
+            >
+              <div className="quiz-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="quiz-modal-header">
+                  <h3>📥 Natijalarni Yuklab Olish</h3>
+                  <button
+                    className="quiz-modal-close"
+                    onClick={() => setShowExportModal(false)}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="quiz-modal-body">
+                  <p
+                    style={{
+                      marginBottom: "16px",
+                      color: "rgba(255,255,255,0.7)",
+                    }}
+                  >
+                    Qaysi testning natijalarini yuklab olmoqchisiz?
+                  </p>
+                  <div className="quiz-field">
+                    <select
+                      className="quiz-select"
+                      value={selectedQuizForExport}
+                      onChange={(e) => setSelectedQuizForExport(e.target.value)}
+                    >
+                      <option value="all">Barcha testlar</option>
+                      {[...new Set(assignments.map((a) => a.testId))].map(
+                        (quizId) => {
+                          const quiz = assignments.find(
+                            (a) => a.testId === quizId,
+                          );
+                          return (
+                            <option key={quizId} value={quizId}>
+                              {quiz?.quizTitle || "Noma'lum test"}
+                            </option>
+                          );
+                        },
+                      )}
+                    </select>
+                  </div>
+                </div>
+                <div className="quiz-modal-footer">
+                  <button
+                    className="quiz-btn quiz-btn-secondary"
+                    onClick={() => setShowExportModal(false)}
+                  >
+                    Bekor qilish
+                  </button>
+                  <button
+                    className="quiz-btn quiz-btn-primary"
+                    onClick={() => exportResults(selectedQuizForExport)}
+                  >
+                    📥 Yuklab Olish
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {assignments.length === 0 ? (
             <div className="quiz-empty">
               <div className="quiz-empty-icon">📭</div>
-              <p className="quiz-empty-text">Hali hech kim testga topshirilmagan.</p>
+              <p className="quiz-empty-text">
+                Hali hech kim testga topshirilmagan.
+              </p>
             </div>
           ) : (
             <div className="quiz-table-wrapper">
               <table className="quiz-table">
                 <thead>
                   <tr>
+                    <th>Test Nomi</th>
+                    <th>Muddat</th>
                     <th>O'quvchi Ismi</th>
                     <th>Email</th>
                     <th>Ball</th>
@@ -1861,31 +2409,72 @@ export default function OnlineQuizSystem() {
                 <tbody>
                   {assignments.map((assignment) => (
                     <tr key={assignment.assignmentId}>
+                      <td style={{ fontWeight: 500 }}>
+                        {assignment.quizTitle}
+                      </td>
+                      <td
+                        style={{
+                          color: "rgba(255,255,255,0.6)",
+                          fontSize: "0.85rem",
+                        }}
+                      >
+                        {assignment.deadline
+                          ? new Date(assignment.deadline).toLocaleDateString(
+                              "uz-UZ",
+                            )
+                          : "-"}
+                      </td>
                       <td style={{ fontWeight: 500 }}>{assignment.name}</td>
-                      <td style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem' }}>{assignment.email}</td>
+                      <td
+                        style={{
+                          color: "rgba(255,255,255,0.5)",
+                          fontSize: "0.85rem",
+                        }}
+                      >
+                        {assignment.email}
+                      </td>
                       <td>
-                        <span className={`quiz-score ${
-                          assignment.score >= 80 ? 'high' :
-                          assignment.score >= 50 ? 'medium' :
-                          assignment.score > 0 ? 'low' : 'zero'
-                        }`}>
+                        <span
+                          className={`quiz-score ${
+                            assignment.score >= 80
+                              ? "high"
+                              : assignment.score >= 50
+                                ? "medium"
+                                : assignment.score > 0
+                                  ? "low"
+                                  : "zero"
+                          }`}
+                        >
                           {assignment.score}%
                         </span>
                       </td>
                       <td>
-                        <span className={`quiz-status-badge ${
-                          assignment.status === 'Bajarildi' ? 'completed' : 'not-attempted'
-                        }`}>
-                          {assignment.status === 'Bajarildi' ? '✅' : '⏳'} {assignment.status}
+                        <span
+                          className={`quiz-status-badge ${
+                            assignment.status === "Bajarildi"
+                              ? "completed"
+                              : "not-attempted"
+                          }`}
+                        >
+                          {assignment.status === "Bajarildi" ? "✅" : "⏳"}{" "}
+                          {assignment.status}
                         </span>
                       </td>
                       <td>
                         <button
                           className="quiz-btn quiz-btn-secondary quiz-btn-sm"
-                          onClick={() => simulateSubmission(assignment.assignmentId)}
-                          disabled={assignment.status === 'Bajarildi'}
+                          onClick={() =>
+                            simulateSubmission(assignment.assignmentId)
+                          }
+                          disabled={assignment.status === "Bajarildi"}
                         >
                           🎲 Simulyatsiya
+                        </button>
+                        <button
+                          style={styles.deleteBtn}
+                          onClick={() => handleDeleteTest(assignment.testId)}
+                        >
+                          🗑️
                         </button>
                       </td>
                     </tr>
@@ -1902,404 +2491,421 @@ export default function OnlineQuizSystem() {
 
 const styles = {
   dashboard: {
-    display: 'flex',
-    minHeight: '100vh',
-    overflowY: 'auto',
-    background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
+    display: "flex",
+    minHeight: "100vh",
+    overflowY: "auto",
+    background:
+      "linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)",
     fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
-    color: '#ffffff',
+    color: "#ffffff",
   },
   sidebar: {
-    width: '280px',
-    background: 'rgba(255, 255, 255, 0.03)',
-    backdropFilter: 'blur(20px)',
-    borderRight: '1px solid rgba(255, 255, 255, 0.08)',
-    padding: '32px 20px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '32px',
-    position: 'sticky',
-    top: '0',
-    height: '100vh',
-    flexShrink: '0',
+    width: "280px",
+    background: "rgba(255, 255, 255, 0.03)",
+    backdropFilter: "blur(20px)",
+    borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+    padding: "32px 20px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "32px",
+    position: "sticky",
+    top: "0",
+    height: "100vh",
+    flexShrink: "0",
   },
   logo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '14px',
-    padding: '0 8px',
+    display: "flex",
+    alignItems: "center",
+    gap: "14px",
+    padding: "0 8px",
   },
   logoIcon: {
-    width: '48px',
-    height: '48px',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    borderRadius: '16px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '24px',
-    boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)',
+    width: "48px",
+    height: "48px",
+    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    borderRadius: "16px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "24px",
+    boxShadow: "0 8px 32px rgba(102, 126, 234, 0.3)",
   },
   logoText: {
-    fontSize: '1.3rem',
-    fontWeight: '700',
-    background: 'linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    backgroundClip: 'text',
-    letterSpacing: '-0.02em',
+    fontSize: "1.3rem",
+    fontWeight: "700",
+    background: "linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+    backgroundClip: "text",
+    letterSpacing: "-0.02em",
   },
   menu: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
   },
   menuItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '14px',
-    padding: '14px 18px',
-    borderRadius: '16px',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease',
-    border: '1px solid transparent',
-    fontSize: '0.95rem',
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.7)',
-    background: 'transparent',
-    width: '100%',
-    textAlign: 'left',
-    position: 'relative',
-    overflow: 'hidden',
+    display: "flex",
+    alignItems: "center",
+    gap: "14px",
+    padding: "14px 18px",
+    borderRadius: "16px",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+    border: "1px solid transparent",
+    fontSize: "0.95rem",
+    fontWeight: "500",
+    color: "rgba(255, 255, 255, 0.7)",
+    background: "transparent",
+    width: "100%",
+    textAlign: "left",
+    position: "relative",
+    overflow: "hidden",
   },
   menuItemActive: {
-    background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%)',
-    color: '#ffffff',
-    borderColor: 'rgba(102, 126, 234, 0.3)',
-    boxShadow: '0 4px 20px rgba(102, 126, 234, 0.15)',
+    background:
+      "linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%)",
+    color: "#ffffff",
+    borderColor: "rgba(102, 126, 234, 0.3)",
+    boxShadow: "0 4px 20px rgba(102, 126, 234, 0.15)",
   },
   menuIcon: {
-    fontSize: '1.2rem',
-    width: '24px',
-    textAlign: 'center',
+    fontSize: "1.2rem",
+    width: "24px",
+    textAlign: "center",
   },
   main: {
-    flex: '1',
-    padding: '32px',
-    overflowY: 'auto',
+    flex: "1",
+    padding: "32px",
+    overflowY: "auto",
   },
   header: {
-    marginBottom: '32px',
+    marginBottom: "32px",
   },
   headerTitle: {
-    fontSize: '2rem',
-    fontWeight: '700',
-    marginBottom: '8px',
+    fontSize: "2rem",
+    fontWeight: "700",
+    marginBottom: "8px",
   },
   headerSubtitle: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: '1rem',
+    color: "rgba(255, 255, 255, 0.6)",
+    fontSize: "1rem",
   },
   card: {
-    background: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: '20px',
-    padding: '24px',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
-    marginBottom: '24px',
+    background: "rgba(255, 255, 255, 0.03)",
+    borderRadius: "20px",
+    padding: "24px",
+    border: "1px solid rgba(255, 255, 255, 0.08)",
+    marginBottom: "24px",
   },
   cardFull: {
-    background: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: '20px',
-    padding: '24px',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
+    background: "rgba(255, 255, 255, 0.03)",
+    borderRadius: "20px",
+    padding: "24px",
+    border: "1px solid rgba(255, 255, 255, 0.08)",
   },
   cardHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '24px',
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "24px",
   },
   cardTitle: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
   },
   cardTitleIcon: {
-    width: '48px',
-    height: '48px',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    borderRadius: '14px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '24px',
+    width: "48px",
+    height: "48px",
+    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    borderRadius: "14px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "24px",
   },
   cardTitleText: {
-    fontSize: '1.25rem',
-    fontWeight: '600',
+    fontSize: "1.25rem",
+    fontWeight: "600",
   },
   cardSubtitle: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: '0.875rem',
-    marginTop: '4px',
+    color: "rgba(255, 255, 255, 0.6)",
+    fontSize: "0.875rem",
+    marginTop: "4px",
   },
   field: {
-    marginBottom: '20px',
+    marginBottom: "20px",
   },
   label: {
-    display: 'block',
-    marginBottom: '8px',
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: '0.875rem',
+    display: "block",
+    marginBottom: "8px",
+    fontWeight: "500",
+    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: "0.875rem",
   },
   input: {
-    width: '100%',
-    padding: '14px 18px',
-    background: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    borderRadius: '12px',
-    color: '#ffffff',
-    fontSize: '1rem',
-    outline: 'none',
-    transition: 'all 0.3s ease',
+    width: "100%",
+    padding: "14px 18px",
+    background: "rgba(255, 255, 255, 0.05)",
+    border: "1px solid rgba(255, 255, 255, 0.1)",
+    borderRadius: "12px",
+    color: "#ffffff",
+    fontSize: "1rem",
+    outline: "none",
+    transition: "all 0.3s ease",
   },
   select: {
-    width: '100%',
-    padding: '14px 18px',
-    background: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    borderRadius: '12px',
-    color: '#ffffff',
-    fontSize: '1rem',
-    outline: 'none',
-    cursor: 'pointer',
+    width: "100%",
+    padding: "14px 18px",
+    background: "rgba(255, 255, 255, 0.05)",
+    border: "1px solid rgba(255, 255, 255, 0.1)",
+    borderRadius: "12px",
+    color: "#ffffff",
+    fontSize: "1rem",
+    outline: "none",
+    cursor: "pointer",
   },
   btn: {
-    padding: '14px 28px',
-    borderRadius: '12px',
-    fontSize: '1rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease',
-    border: 'none',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '8px',
+    padding: "14px 28px",
+    borderRadius: "12px",
+    fontSize: "1rem",
+    fontWeight: "600",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+    border: "none",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
   },
   btnPrimary: {
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: '#ffffff',
-    boxShadow: '0 4px 20px rgba(102, 126, 234, 0.3)',
+    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    color: "#ffffff",
+    boxShadow: "0 4px 20px rgba(102, 126, 234, 0.3)",
   },
   btnSecondary: {
-    background: 'rgba(255, 255, 255, 0.1)',
-    color: '#ffffff',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
+    background: "rgba(255, 255, 255, 0.1)",
+    color: "#ffffff",
+    border: "1px solid rgba(255, 255, 255, 0.2)",
   },
   btnSm: {
-    padding: '8px 16px',
-    fontSize: '0.875rem',
+    padding: "8px 16px",
+    fontSize: "0.875rem",
   },
   questionList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
+    display: "flex",
+    flexDirection: "column",
+    gap: "16px",
   },
   questionCard: {
-    background: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: '16px',
-    padding: '20px',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
+    background: "rgba(255, 255, 255, 0.05)",
+    borderRadius: "16px",
+    padding: "20px",
+    border: "1px solid rgba(255, 255, 255, 0.1)",
   },
   questionHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '16px',
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "16px",
   },
   questionNumber: {
-    fontWeight: '600',
-    color: '#667eea',
+    fontWeight: "600",
+    color: "#667eea",
   },
   questionType: {
-    fontSize: '0.875rem',
-    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: "0.875rem",
+    color: "rgba(255, 255, 255, 0.6)",
   },
   questionText: {
-    fontSize: '1rem',
-    marginBottom: '16px',
-    color: '#ffffff',
+    fontSize: "1rem",
+    marginBottom: "16px",
+    color: "#ffffff",
   },
   optionsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '12px',
+    display: "grid",
+    gridTemplateColumns: "repeat(2, 1fr)",
+    gap: "12px",
   },
   optionLabel: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '14px 18px',
-    background: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: '12px',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease',
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    padding: "14px 18px",
+    background: "rgba(255, 255, 255, 0.05)",
+    borderRadius: "12px",
+    border: "1px solid rgba(255, 255, 255, 0.1)",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
   },
   optionRadio: {
-    width: '20px',
-    height: '20px',
-    borderRadius: '50%',
-    border: '2px solid rgba(255, 255, 255, 0.3)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: "20px",
+    height: "20px",
+    borderRadius: "50%",
+    border: "2px solid rgba(255, 255, 255, 0.3)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
   tableWrapper: {
-    overflowX: 'auto',
+    overflowX: "auto",
   },
   table: {
-    width: '100%',
-    borderCollapse: 'collapse',
+    width: "100%",
+    borderCollapse: "collapse",
   },
   th: {
-    textAlign: 'left',
-    padding: '16px',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontWeight: '600',
-    fontSize: '0.875rem',
+    textAlign: "left",
+    padding: "16px",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+    color: "rgba(255, 255, 255, 0.6)",
+    fontWeight: "600",
+    fontSize: "0.875rem",
   },
   td: {
-    padding: '16px',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+    padding: "16px",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
   },
   statusBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px',
-    padding: '6px 12px',
-    borderRadius: '20px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    background: 'rgba(34, 197, 94, 0.15)',
-    color: '#22c55e',
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "6px 12px",
+    borderRadius: "20px",
+    fontSize: "0.875rem",
+    fontWeight: "500",
+    background: "rgba(34, 197, 94, 0.15)",
+    color: "#22c55e",
   },
   statusDot: {
-    width: '8px',
-    height: '8px',
-    borderRadius: '50%',
-    background: '#22c55e',
+    width: "8px",
+    height: "8px",
+    borderRadius: "50%",
+    background: "#22c55e",
   },
   emptyState: {
-    textAlign: 'center',
-    padding: '48px',
-    color: 'rgba(255, 255, 255, 0.6)',
+    textAlign: "center",
+    padding: "48px",
+    color: "rgba(255, 255, 255, 0.6)",
   },
   emptyIcon: {
-    fontSize: '48px',
-    marginBottom: '16px',
+    fontSize: "48px",
+    marginBottom: "16px",
   },
   successAlert: {
-    padding: '16px 24px',
-    background: 'rgba(34, 197, 94, 0.15)',
-    borderRadius: '12px',
-    border: '1px solid rgba(34, 197, 94, 0.3)',
-    color: '#22c55e',
-    marginBottom: '24px',
+    padding: "16px 24px",
+    background: "rgba(34, 197, 94, 0.15)",
+    borderRadius: "12px",
+    border: "1px solid rgba(34, 197, 94, 0.3)",
+    color: "#22c55e",
+    marginBottom: "24px",
   },
   errorAlert: {
-    padding: '16px 24px',
-    background: 'rgba(239, 68, 68, 0.15)',
-    borderRadius: '12px',
-    border: '1px solid rgba(239, 68, 68, 0.3)',
-    color: '#ef4444',
-    marginBottom: '24px',
+    padding: "16px 24px",
+    background: "rgba(239, 68, 68, 0.15)",
+    borderRadius: "12px",
+    border: "1px solid rgba(239, 68, 68, 0.3)",
+    color: "#ef4444",
+    marginBottom: "24px",
   },
   notification: {
-    padding: '16px 24px',
-    background: 'rgba(102, 126, 234, 0.15)',
-    borderRadius: '12px',
-    border: '1px solid rgba(102, 126, 234, 0.3)',
-    color: '#667eea',
-    marginBottom: '24px',
+    padding: "16px 24px",
+    background: "rgba(102, 126, 234, 0.15)",
+    borderRadius: "12px",
+    border: "1px solid rgba(102, 126, 234, 0.3)",
+    color: "#667eea",
+    marginBottom: "24px",
   },
   studentList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    maxHeight: '400px',
-    overflowY: 'auto',
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+    maxHeight: "400px",
+    overflowY: "auto",
   },
   studentItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '12px 16px',
-    background: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: '12px',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease',
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    padding: "12px 16px",
+    background: "rgba(255, 255, 255, 0.05)",
+    borderRadius: "12px",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
   },
   studentCheckbox: {
-    width: '20px',
-    height: '20px',
-    borderRadius: '6px',
-    border: '2px solid rgba(255, 255, 255, 0.3)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: "20px",
+    height: "20px",
+    borderRadius: "6px",
+    border: "2px solid rgba(255, 255, 255, 0.3)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
   studentInfo: {
-    flex: '1',
+    flex: "1",
   },
   studentName: {
-    fontWeight: '500',
-    color: '#ffffff',
+    fontWeight: "500",
+    color: "#ffffff",
   },
   studentEmail: {
-    fontSize: '0.875rem',
-    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: "0.875rem",
+    color: "rgba(255, 255, 255, 0.6)",
   },
   studentGroup: {
-    fontSize: '0.75rem',
-    color: 'rgba(255, 255, 255, 0.5)',
-    background: 'rgba(255, 255, 255, 0.1)',
-    padding: '4px 8px',
-    borderRadius: '6px',
+    fontSize: "0.75rem",
+    color: "rgba(255, 255, 255, 0.5)",
+    background: "rgba(255, 255, 255, 0.1)",
+    padding: "4px 8px",
+    borderRadius: "6px",
   },
   credentialsList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
   },
   credentialCard: {
-    background: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: '12px',
-    padding: '16px',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
+    background: "rgba(255, 255, 255, 0.05)",
+    borderRadius: "12px",
+    padding: "16px",
+    border: "1px solid rgba(255, 255, 255, 0.1)",
   },
   credentialHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '12px',
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "12px",
   },
   credentialCode: {
-    fontFamily: 'monospace',
-    fontSize: '1.25rem',
-    fontWeight: '700',
-    color: '#667eea',
-    background: 'rgba(102, 126, 234, 0.1)',
-    padding: '8px 16px',
-    borderRadius: '8px',
+    fontFamily: "monospace",
+    fontSize: "1.25rem",
+    fontWeight: "700",
+    color: "#667eea",
+    background: "rgba(102, 126, 234, 0.1)",
+    padding: "8px 16px",
+    borderRadius: "8px",
   },
   loadingContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '400px',
-    color: 'rgba(255, 255, 255, 0.6)',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "400px",
+    color: "rgba(255, 255, 255, 0.6)",
+  },
+  deleteBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    border: "1px solid rgba(255, 80, 80, 0.4)",
+    background: "rgba(255, 80, 80, 0.1)",
+    color: "#ff6b6b",
+    cursor: "pointer",
+    padding: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "1rem",
+    flexShrink: 0,
   },
 };

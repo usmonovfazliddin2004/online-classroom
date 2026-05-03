@@ -310,7 +310,7 @@ export default function TakeQuiz() {
             onClick={handleSubmit}
             disabled={submitting}
           >
-            {submitting ? "Yuborilmoqda..." : "✅ Testni tugatish"}
+            {submitting ? "Yuborilmoqda..." : "Testni tugatish"}
           </button>
         ) : (
           <button

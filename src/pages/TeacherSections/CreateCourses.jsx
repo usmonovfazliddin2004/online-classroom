@@ -10,46 +10,46 @@ export default function CreateCourse() {
   const [description, setDescription] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  // 1️⃣ Login bo‘lgan o‘qituvchini olish
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    // 1️⃣ Login bo‘lgan o‘qituvchini olish
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) {
-    toast.error("Avval login qiling");
-    return;
-  }
+    if (!user) {
+      toast.error("Avval login qiling");
+      return;
+    }
 
-  // 2️⃣ Kursni Supabase ga yozish
-  const { error } = await supabase.from("courses").insert([
-    {
-      title,
-      description,
-      video_url: videoUrl,
-      teacher_id: user.id,
-    },
-  ]);
+    // 2️⃣ Kursni Supabase ga yozish
+    const { error } = await supabase.from("courses").insert([
+      {
+        title,
+        description,
+        video_url: videoUrl,
+        teacher_id: user.id,
+      },
+    ]);
 
-  if (error) {
-    console.error(error);
-    toast.error("Kurs saqlanmadi");
-    return;
-  }
+    if (error) {
+      console.error(error);
+      toast.error("Kurs saqlanmadi");
+      return;
+    }
 
-  // 3️⃣ UI feedback
-  setShowToast(true);
-  setTitle("");
-  setDescription("");
-  setVideoUrl("");
+    // 3️⃣ UI feedback
+    setShowToast(true);
+    setTitle("");
+    setDescription("");
+    setVideoUrl("");
 
-  setTimeout(() => {
-    setShowToast(false);
-    navigate("/teacher");
-  }, 2000);
-};
+    setTimeout(() => {
+      setShowToast(false);
+      navigate("/teacher");
+    }, 2000);
+  };
 
   return (
     <div className="page">
@@ -60,7 +60,7 @@ const handleSubmit = async (e) => {
           Orqaga qaytish
         </button>
 
-        <h1>📘 Kurs yaratish</h1>
+        <h1 style={{color: "white"}}>📘 Kurs yaratish</h1>
         <p>Kurs nomi, tavsifi va video havolasini kiriting</p>
       </div>
 
@@ -116,26 +116,24 @@ const handleSubmit = async (e) => {
         }
 
         .page {
-          min-height: 100vh;
-          width: 100%;
-          background: radial-gradient(
-            circle at top,
-            #0b1220,
-            #020617
-          );
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          padding: 40px 20px 80px;
-          color: white;
-        }
+  min-height: 100vh;
+  width: 100%;
+  background: radial-gradient(circle at top, #0b1220, #020617);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* 🔥 qo‘shildi */
+
+  padding: 20px; 
+}
 
         .header {
-          text-align: center;
-          max-width: 700px;
-          width: 100%;
-          margin-bottom: 30px;
-        }
+  text-align: center;
+  max-width: 600px;
+  width: 100%;
+  margin-bottom: 20px; 
+}
 
         .back-btn {
           background: rgba(255, 255, 255, 0.08);
@@ -163,26 +161,31 @@ const handleSubmit = async (e) => {
         }
 
         .card {
-          width: 100%;
-          max-width: 700px;
-          background: rgba(255, 255, 255, 0.04);
-          backdrop-filter: blur(12px);
-          border-radius: 20px;
-          padding: 30px;
-          display: flex;
-          flex-direction: column;
-          gap: 18px;
-        }
+  width: 100%;
+  max-width: 600px; 
+  
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+
+  border-radius: 18px;
+  padding: 24px; 
+
+  display: flex;
+  flex-direction: column;
+  gap: 14px; 
+  box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+
+}
 
         input,
         textarea {
           width: 100%;
-          padding: 16px 18px;
-          border-radius: 14px;
+          padding: 14px 16px;
+          border-radius: 12px;
           border: 1px solid rgba(255, 255, 255, 0.12);
           background: rgba(0, 0, 0, 0.35);
           color: white;
-          font-size: 15px;
+          font-size: 14px;
           resize: none;
         }
 
@@ -199,20 +202,20 @@ const handleSubmit = async (e) => {
 
         .file-box {
           width: 100%;
-          padding: 16px;
-          border-radius: 14px;
+          padding: 14px;
+          border-radius: 12px;
           border: 1px dashed #3b82f6;
           background: rgba(59, 130, 246, 0.1);
           text-align: center;
           cursor: pointer;
           color: #bfdbfe;
-          font-size: 15px;
+          font-size: 14px;
         }
 
         .submit-btn {
-          margin-top: 10px;
-          padding: 16px;
-          border-radius: 999px;
+          margin-top: 6px;
+          padding: 14px;
+          border-radius: 14px;
           border: none;
           background: linear-gradient(
             135deg,
@@ -220,9 +223,10 @@ const handleSubmit = async (e) => {
             #3b82f6
           );
           color: white;
-          font-size: 16px;
+          font-size: 15px;
           font-weight: 600;
           cursor: pointer;
+          width: 100%;
         }
 
         .submit-btn:hover {

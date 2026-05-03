@@ -12,6 +12,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0",
     "framer-motion": "^12.38.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "leaflet": "^1.9.4",
     "libphonenumber-js": "^1.12.31",
     "react": "^18.2.0",
@@ -22,7 +24,8 @@
     "react-phone-input-2": "^2.15.1",
     "react-router-dom": "^7.10.1",
     "react-toastify": "^11.0.5",
-    "recharts": "^3.8.0"
+    "recharts": "^3.8.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
